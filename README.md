@@ -1,3 +1,3 @@
-# Softbody2D
+# Bendy2D
 
-This is a physics engine
+This is a soft-body physics engine
