@@ -1,6 +1,7 @@
 mod physics;
 
 use crate::physics::circle::Circle;
+use crate::physics::link::{Link, ParticleLink};
 use crate::physics::particle::Particle;
 use crate::physics::solver::{Bounds, Solver};
 use egui_macroquad::{egui, ui};
@@ -8,9 +9,13 @@ use macroquad::miniquad::fs::Response;
 use macroquad::prelude::*;
 use physics::scene::Scene;
 use vector2d::Vector2D;
-use crate::physics::link::{Link, ParticleLink};
 
-fn spawn_particle_array(solver: &mut Solver, pos: &Vector2D<f32>, count: &Vector2D<u32>, dist: f32) {
+fn spawn_particle_array(
+    solver: &mut Solver,
+    pos: &Vector2D<f32>,
+    count: &Vector2D<u32>,
+    dist: f32,
+) {
     // Spawn particles in a grid and link neighbouring particles together
     for y in 0..count.y {
         for x in 0..count.x {
@@ -41,7 +46,7 @@ fn spawn_particle_array(solver: &mut Solver, pos: &Vector2D<f32>, count: &Vector
                         link: Link {
                             particle_a: solver.get_particle_len() - count.x as usize,
                             particle_b: solver.get_particle_len() - 1,
-                            target_distance: (dist*dist+dist*dist).sqrt(),
+                            target_distance: (dist * dist + dist * dist).sqrt(),
                         },
                     });
                 }
@@ -51,7 +56,7 @@ fn spawn_particle_array(solver: &mut Solver, pos: &Vector2D<f32>, count: &Vector
                     link: Link {
                         particle_a: solver.get_particle_len() - count.x as usize - 2,
                         particle_b: solver.get_particle_len() - 1,
-                        target_distance: (dist*dist+dist*dist).sqrt(),
+                        target_distance: (dist * dist + dist * dist).sqrt(),
                     },
                 });
             }
@@ -140,7 +145,6 @@ async fn main() {
             }
             circle_count = circles.len();
         }
-
 
         ui(|egui_ctx| {
             egui::Window::new("Information").show(egui_ctx, |ui| {
