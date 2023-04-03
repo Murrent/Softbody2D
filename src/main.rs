@@ -155,7 +155,13 @@ fn input_grid(solver: &mut Solver, radius: &mut f32) {
     if is_mouse_button_pressed(MouseButton::Left) {
         spawn_particle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), radius);
     } else if is_mouse_button_pressed(MouseButton::Right) {
-        spawn_circle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), &(*radius * 2.0), radius)
+        spawn_circle_array(
+            solver,
+            &mouse_pos,
+            &(Vector2D { x: 5, y: 5 }),
+            &(*radius * 2.0),
+            radius,
+        )
     }
 }
 
@@ -177,8 +183,7 @@ fn input_last(solver: &mut Solver, radius: &mut f32) {
                 },
             });
         }
-    }
-    else if is_mouse_button_pressed(MouseButton::Right) {
+    } else if is_mouse_button_pressed(MouseButton::Right) {
         solver.add_circle(Circle {
             point: Particle::new(&mouse_pos),
             radius: *radius,
@@ -214,7 +219,12 @@ fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
+    request_new_screen_size(1280.0, 720.0);
     rand::srand(get_time() as u64);
+
+    // Refresh window
+    clear_background(RED);
+    next_frame().await;
 
     let mut solver = Solver::new();
     solver.bounds.size = Vector2D {
