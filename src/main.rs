@@ -1,7 +1,7 @@
 mod physics;
 
 use crate::physics::circle::Circle;
-use crate::physics::link::{Link, ParticleLink};
+use crate::physics::link::{CircleLink, Link, ParticleLink};
 use crate::physics::particle::Particle;
 use crate::physics::solver::Solver;
 use egui_macroquad::egui::Pos2;
@@ -37,11 +37,12 @@ fn spawn_particle_array(
                 y: pos.y + y as f32 * dist,
             };
             solver.add_particle(&particle_pos);
+            let length = solver.get_particle_len();
             if x > 0 {
                 solver.add_particle_link(ParticleLink {
                     link: Link {
-                        particle_a: solver.get_particle_len() - 2,
-                        particle_b: solver.get_particle_len() - 1,
+                        particle_a: length - 2,
+                        particle_b: length - 1,
                         target_distance: *dist,
                     },
                 });
@@ -49,16 +50,16 @@ fn spawn_particle_array(
             if y > 0 {
                 solver.add_particle_link(ParticleLink {
                     link: Link {
-                        particle_a: solver.get_particle_len() - count.x as usize - 1,
-                        particle_b: solver.get_particle_len() - 1,
+                        particle_a: length - count.x as usize - 1,
+                        particle_b: length - 1,
                         target_distance: *dist,
                     },
                 });
                 if x < count.x - 1 {
                     solver.add_particle_link(ParticleLink {
                         link: Link {
-                            particle_a: solver.get_particle_len() - count.x as usize,
-                            particle_b: solver.get_particle_len() - 1,
+                            particle_a: length - count.x as usize,
+                            particle_b: length - 1,
                             target_distance: (dist * dist + dist * dist).sqrt(),
                         },
                     });
@@ -67,8 +68,66 @@ fn spawn_particle_array(
             if x > 0 && y > 0 {
                 solver.add_particle_link(ParticleLink {
                     link: Link {
-                        particle_a: solver.get_particle_len() - count.x as usize - 2,
-                        particle_b: solver.get_particle_len() - 1,
+                        particle_a: length - count.x as usize - 2,
+                        particle_b: length - 1,
+                        target_distance: (dist * dist + dist * dist).sqrt(),
+                    },
+                });
+            }
+        }
+    }
+}
+
+fn spawn_circle_array(
+    solver: &mut Solver,
+    pos: &Vector2D<f32>,
+    count: &Vector2D<u32>,
+    dist: &f32,
+    radius: &f32,
+) {
+    for y in 0..count.y {
+        for x in 0..count.x {
+            let circle_pos = Vector2D {
+                x: pos.x + x as f32 * dist,
+                y: pos.y + y as f32 * dist,
+            };
+            solver.add_circle(Circle {
+                point: Particle::new(&circle_pos),
+                radius: *radius,
+            });
+            let length = solver.get_circles_len();
+            if x > 0 {
+                solver.add_circle_link(CircleLink {
+                    link: Link {
+                        particle_a: length - 2,
+                        particle_b: length - 1,
+                        target_distance: *dist,
+                    },
+                });
+            }
+            if y > 0 {
+                solver.add_circle_link(CircleLink {
+                    link: Link {
+                        particle_a: length - count.x as usize - 1,
+                        particle_b: length - 1,
+                        target_distance: *dist,
+                    },
+                });
+                if x < count.x - 1 {
+                    solver.add_circle_link(CircleLink {
+                        link: Link {
+                            particle_a: length - count.x as usize,
+                            particle_b: length - 1,
+                            target_distance: (dist * dist + dist * dist).sqrt(),
+                        },
+                    });
+                }
+            }
+            if x > 0 && y > 0 {
+                solver.add_circle_link(CircleLink {
+                    link: Link {
+                        particle_a: length - count.x as usize - 2,
+                        particle_b: length - 1,
                         target_distance: (dist * dist + dist * dist).sqrt(),
                     },
                 });
@@ -96,22 +155,11 @@ fn input_grid(solver: &mut Solver, radius: &mut f32) {
     if is_mouse_button_pressed(MouseButton::Left) {
         spawn_particle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), radius);
     } else if is_mouse_button_pressed(MouseButton::Right) {
-        for x in 0..5 {
-            for y in 0..5 {
-                let spawn_pos = Vector2D {
-                    x: mouse_pos.x + x as f32 * *radius * 2.0,
-                    y: mouse_pos.y + y as f32 * *radius * 2.0,
-                };
-                solver.add_circle(Circle {
-                    point: Particle::new(&spawn_pos),
-                    radius: *radius,
-                });
-            }
-        }
+        spawn_circle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), &(*radius * 2.0), radius)
     }
 }
 
-fn input_last(solver: &mut Solver) {
+fn input_last(solver: &mut Solver, radius: &mut f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_pressed(MouseButton::Left) {
@@ -130,6 +178,25 @@ fn input_last(solver: &mut Solver) {
             });
         }
     }
+    else if is_mouse_button_pressed(MouseButton::Right) {
+        solver.add_circle(Circle {
+            point: Particle::new(&mouse_pos),
+            radius: *radius,
+        });
+        let length = solver.get_circles_len();
+        if length < 2 {
+            return;
+        }
+        if let Some(particle) = solver.get_circle(length - 2) {
+            solver.add_circle_link(CircleLink {
+                link: Link {
+                    particle_a: length - 2,
+                    particle_b: length - 1,
+                    target_distance: (mouse_pos - particle.point.pos).length(),
+                },
+            });
+        }
+    }
 }
 
 fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
@@ -141,7 +208,7 @@ fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
     match spawn_mode {
         SpawnMode::Single => input_single(solver, radius),
         SpawnMode::Grid => input_grid(solver, radius),
-        SpawnMode::Last => input_last(solver),
+        SpawnMode::Last => input_last(solver, radius),
     }
 }
 
@@ -209,6 +276,20 @@ async fn main() {
                 draw_circle(circle.point.pos.x, circle.point.pos.y, circle.radius, BLUE);
             }
             circle_count = circles.len();
+
+            let links = solver.get_circle_links();
+            for link in links.iter() {
+                let particle_a = circles[link.link.particle_a];
+                let particle_b = circles[link.link.particle_b];
+                draw_line(
+                    particle_a.point.pos.x,
+                    particle_a.point.pos.y,
+                    particle_b.point.pos.x,
+                    particle_b.point.pos.y,
+                    1.0,
+                    YELLOW,
+                );
+            }
         }
 
         ui(|egui_ctx| {
