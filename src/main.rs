@@ -14,6 +14,7 @@ enum SpawnMode {
     Single,
     Grid,
     Last,
+    Spam,
 }
 
 fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
@@ -21,6 +22,7 @@ fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
         SpawnMode::Single => "Single".to_string(),
         SpawnMode::Grid => "Grid".to_string(),
         SpawnMode::Last => "Last".to_string(),
+        SpawnMode::Spam => "Spam".to_string(),
     }
 }
 
@@ -204,6 +206,19 @@ fn input_last(solver: &mut Solver, radius: &mut f32) {
     }
 }
 
+fn input_spam(solver: &mut Solver, radius: &mut f32) {
+    let mouse_pos: Vector2D<f32> = mouse_position().into();
+
+    if is_mouse_button_down(MouseButton::Left) {
+        solver.add_particle(&mouse_pos);
+    } else if is_mouse_button_down(MouseButton::Right) {
+        solver.add_circle(Circle {
+            point: Particle::new(&mouse_pos),
+            radius: *radius,
+        });
+    }
+}
+
 fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
     if mouse_wheel().1 > 0.0 {
         *radius += 1.0;
@@ -214,6 +229,7 @@ fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
         SpawnMode::Single => input_single(solver, radius),
         SpawnMode::Grid => input_grid(solver, radius),
         SpawnMode::Last => input_last(solver, radius),
+        SpawnMode::Spam => input_spam(solver, radius),
     }
 }
 
@@ -325,7 +341,8 @@ async fn main() {
                         match spawn_mode {
                             SpawnMode::Single => spawn_mode = SpawnMode::Grid,
                             SpawnMode::Grid => spawn_mode = SpawnMode::Last,
-                            SpawnMode::Last => spawn_mode = SpawnMode::Single,
+                            SpawnMode::Last => spawn_mode = SpawnMode::Spam,
+                            SpawnMode::Spam => spawn_mode = SpawnMode::Single,
                         }
                     }
                     if ui
