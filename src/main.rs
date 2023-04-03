@@ -3,20 +3,33 @@ mod physics;
 use crate::physics::circle::Circle;
 use crate::physics::link::{Link, ParticleLink};
 use crate::physics::particle::Particle;
-use crate::physics::solver::{Bounds, Solver};
+use crate::physics::solver::Solver;
+use egui_macroquad::egui::Pos2;
 use egui_macroquad::{egui, ui};
-use macroquad::miniquad::fs::Response;
+use macroquad::math::{f32, u32};
 use macroquad::prelude::*;
-use physics::scene::Scene;
 use vector2d::Vector2D;
+
+enum SpawnMode {
+    Single,
+    Grid,
+    Last,
+}
+
+fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
+    match spawn_mode {
+        SpawnMode::Single => "Single".to_string(),
+        SpawnMode::Grid => "Grid".to_string(),
+        SpawnMode::Last => "Last".to_string(),
+    }
+}
 
 fn spawn_particle_array(
     solver: &mut Solver,
     pos: &Vector2D<f32>,
     count: &Vector2D<u32>,
-    dist: f32,
+    dist: &f32,
 ) {
-    // Spawn particles in a grid and link neighbouring particles together
     for y in 0..count.y {
         for x in 0..count.x {
             let particle_pos = Vector2D {
@@ -29,7 +42,7 @@ fn spawn_particle_array(
                     link: Link {
                         particle_a: solver.get_particle_len() - 2,
                         particle_b: solver.get_particle_len() - 1,
-                        target_distance: dist,
+                        target_distance: *dist,
                     },
                 });
             }
@@ -38,7 +51,7 @@ fn spawn_particle_array(
                     link: Link {
                         particle_a: solver.get_particle_len() - count.x as usize - 1,
                         particle_b: solver.get_particle_len() - 1,
-                        target_distance: dist,
+                        target_distance: *dist,
                     },
                 });
                 if x < count.x - 1 {
@@ -63,14 +76,28 @@ fn spawn_particle_array(
         }
     }
 }
-fn update(solver: &mut Solver, dt: &f32, radius: &mut f32) {
+
+fn input_single(solver: &mut Solver, radius: &mut f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_pressed(MouseButton::Left) {
-        spawn_particle_array(solver, &mouse_pos, &Vector2D { x: 10, y: 3 }, 25.0);
+        solver.add_particle(&mouse_pos);
     } else if is_mouse_button_pressed(MouseButton::Right) {
-        for x in 0..10 {
-            for y in 0..10 {
+        solver.add_circle(Circle {
+            point: Particle::new(&mouse_pos),
+            radius: *radius,
+        });
+    }
+}
+
+fn input_grid(solver: &mut Solver, radius: &mut f32) {
+    let mouse_pos: Vector2D<f32> = mouse_position().into();
+
+    if is_mouse_button_pressed(MouseButton::Left) {
+        spawn_particle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), radius);
+    } else if is_mouse_button_pressed(MouseButton::Right) {
+        for x in 0..5 {
+            for y in 0..5 {
                 let spawn_pos = Vector2D {
                     x: mouse_pos.x + x as f32 * *radius * 2.0,
                     y: mouse_pos.y + y as f32 * *radius * 2.0,
@@ -81,14 +108,43 @@ fn update(solver: &mut Solver, dt: &f32, radius: &mut f32) {
                 });
             }
         }
-    } else if mouse_wheel().1 > 0.0 {
+    }
+}
+
+fn input_last(solver: &mut Solver) {
+    let mouse_pos: Vector2D<f32> = mouse_position().into();
+
+    if is_mouse_button_pressed(MouseButton::Left) {
+        solver.add_particle(&mouse_pos);
+        let length = solver.get_particle_len();
+        if length < 2 {
+            return;
+        }
+        if let Some(particle) = solver.get_particle(length - 2) {
+            solver.add_particle_link(ParticleLink {
+                link: Link {
+                    particle_a: length - 2,
+                    particle_b: length - 1,
+                    target_distance: (mouse_pos - particle.pos).length(),
+                },
+            });
+        }
+    }
+}
+
+fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
+    if mouse_wheel().1 > 0.0 {
         *radius += 1.0;
     } else if mouse_wheel().1 < 0.0 {
         *radius -= 1.0;
     }
-
-    solver.update(dt);
+    match spawn_mode {
+        SpawnMode::Single => input_single(solver, radius),
+        SpawnMode::Grid => input_grid(solver, radius),
+        SpawnMode::Last => input_last(solver),
+    }
 }
+
 #[macroquad::main("BasicShapes")]
 async fn main() {
     rand::srand(get_time() as u64);
@@ -101,6 +157,9 @@ async fn main() {
     solver.gravity = Vector2D::new(0.0, 100000.0);
 
     let mut radius = 10.0;
+    let mut spawn_mode = SpawnMode::Single;
+    let mut ui_hovered = false;
+    let mut pause = false;
 
     loop {
         clear_background(RED);
@@ -109,7 +168,13 @@ async fn main() {
         let mouse_pos: Vector2D<f32> = mouse_position().into();
 
         if dt < 0.1 {
-            update(&mut solver, &dt, &mut radius);
+            if !ui_hovered {
+                handle_input(&mut solver, &mut radius, &spawn_mode);
+            }
+
+            if !pause {
+                solver.update(&dt);
+            }
         }
 
         let particle_count;
@@ -147,23 +212,51 @@ async fn main() {
         }
 
         ui(|egui_ctx| {
-            egui::Window::new("Information").show(egui_ctx, |ui| {
-                ui.label(format!("FPS: {}", get_fps().to_string().as_str()));
-                ui.label(format!("ms: {}", dt));
-                ui.label(format!("Mouse: {} {}", mouse_pos.x, mouse_pos.y));
-                ui.label(format!("Radius: {}", radius));
-                ui.label(format!("Particles: {}", particle_count));
-                ui.label(format!("Circles: {}", circle_count));
-                if ui.button("Click me").clicked() {
-                    solver = Solver::new();
-                    solver.bounds.size = Vector2D {
-                        x: screen_width(),
-                        y: screen_height(),
-                    };
-                    solver.gravity = Vector2D::new(0.0, 100000.0);
-                }
-            });
+            let hovered = egui::Window::new("Information")
+                .show(egui_ctx, |ui| {
+                    ui.label(format!("FPS: {}", get_fps().to_string().as_str()));
+                    ui.label(format!("ms: {}", dt));
+                    ui.label(format!("Mouse: {} {}", mouse_pos.x, mouse_pos.y));
+                    ui.label(format!("Radius: {}", radius));
+                    ui.label(format!("Particles: {}", particle_count));
+                    ui.label(format!("Circles: {}", circle_count));
+                    if ui.button("Reset").clicked() {
+                        solver = Solver::new();
+                        solver.bounds.size = Vector2D {
+                            x: screen_width(),
+                            y: screen_height(),
+                        };
+                        solver.gravity = Vector2D::new(0.0, 100000.0);
+                    }
+
+                    ui.label(format!("Spawn mode: {}", spawn_mode_string(&spawn_mode)));
+                    if ui.button("Change mode").clicked() {
+                        match spawn_mode {
+                            SpawnMode::Single => spawn_mode = SpawnMode::Grid,
+                            SpawnMode::Grid => spawn_mode = SpawnMode::Last,
+                            SpawnMode::Last => spawn_mode = SpawnMode::Single,
+                        }
+                    }
+                    if ui
+                        .button(match pause {
+                            true => "Resume",
+                            false => "Pause",
+                        })
+                        .clicked()
+                    {
+                        pause = !pause;
+                    }
+                })
+                .unwrap()
+                .response
+                .rect
+                .contains(Pos2 {
+                    x: mouse_pos.x,
+                    y: mouse_pos.y,
+                });
+            ui_hovered = hovered;
         });
+
         egui_macroquad::draw();
         next_frame().await
     }
