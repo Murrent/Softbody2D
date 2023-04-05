@@ -24,26 +24,21 @@ fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
     }
 }
 
-fn spawn_particle_array(
-    solver: &mut Solver,
-    pos: &Vector2D<f32>,
-    count: &Vector2D<u32>,
-    dist: &f32,
-) {
+fn spawn_particle_array(solver: &mut Solver, pos: Vector2D<f32>, count: Vector2D<u32>, dist: f32) {
     for y in 0..count.y {
         for x in 0..count.x {
             let particle_pos = Vector2D {
                 x: pos.x + x as f32 * dist,
                 y: pos.y + y as f32 * dist,
             };
-            solver.add_particle(&particle_pos);
+            solver.add_particle(particle_pos);
             let length = solver.get_particle_len();
             if x > 0 {
                 solver.add_particle_link(ParticleLink {
                     link: Link {
                         particle_a: length - 2,
                         particle_b: length - 1,
-                        target_distance: *dist,
+                        target_distance: dist,
                     },
                 });
             }
@@ -52,7 +47,7 @@ fn spawn_particle_array(
                     link: Link {
                         particle_a: length - count.x as usize - 1,
                         particle_b: length - 1,
-                        target_distance: *dist,
+                        target_distance: dist,
                     },
                 });
                 if x < count.x - 1 {
@@ -80,10 +75,10 @@ fn spawn_particle_array(
 
 fn spawn_circle_array(
     solver: &mut Solver,
-    pos: &Vector2D<f32>,
-    count: &Vector2D<u32>,
-    dist: &f32,
-    radius: &f32,
+    pos: Vector2D<f32>,
+    count: Vector2D<u32>,
+    dist: f32,
+    radius: f32,
 ) {
     for y in 0..count.y {
         for x in 0..count.x {
@@ -92,8 +87,8 @@ fn spawn_circle_array(
                 y: pos.y + y as f32 * dist,
             };
             solver.add_circle(Circle {
-                point: Particle::new(&circle_pos),
-                radius: *radius,
+                point: Particle::new(circle_pos),
+                radius,
             });
             let length = solver.get_circles_len();
             if x > 0 {
@@ -101,7 +96,7 @@ fn spawn_circle_array(
                     link: Link {
                         particle_a: length - 2,
                         particle_b: length - 1,
-                        target_distance: *dist,
+                        target_distance: dist,
                     },
                 });
             }
@@ -110,7 +105,7 @@ fn spawn_circle_array(
                     link: Link {
                         particle_a: length - count.x as usize - 1,
                         particle_b: length - 1,
-                        target_distance: *dist,
+                        target_distance: dist,
                     },
                 });
                 if x < count.x - 1 {
@@ -136,40 +131,40 @@ fn spawn_circle_array(
     }
 }
 
-fn input_single(solver: &mut Solver, radius: &mut f32) {
+fn input_single(solver: &mut Solver, radius: f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_pressed(MouseButton::Left) {
-        solver.add_particle(&mouse_pos);
+        solver.add_particle(mouse_pos);
     } else if is_mouse_button_pressed(MouseButton::Right) {
         solver.add_circle(Circle {
-            point: Particle::new(&mouse_pos),
-            radius: *radius,
+            point: Particle::new(mouse_pos),
+            radius,
         });
     }
 }
 
-fn input_grid(solver: &mut Solver, radius: &mut f32) {
+fn input_grid(solver: &mut Solver, radius: f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_pressed(MouseButton::Left) {
-        spawn_particle_array(solver, &mouse_pos, &(Vector2D { x: 5, y: 5 }), radius);
+        spawn_particle_array(solver, mouse_pos, Vector2D { x: 5, y: 5 }, radius);
     } else if is_mouse_button_pressed(MouseButton::Right) {
         spawn_circle_array(
             solver,
-            &mouse_pos,
-            &(Vector2D { x: 5, y: 5 }),
-            &(*radius * 2.0),
+            mouse_pos,
+            Vector2D { x: 5, y: 5 },
+            radius * 2.0,
             radius,
         )
     }
 }
 
-fn input_last(solver: &mut Solver, radius: &mut f32) {
+fn input_last(solver: &mut Solver, radius: f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_pressed(MouseButton::Left) {
-        solver.add_particle(&mouse_pos);
+        solver.add_particle(mouse_pos);
         let length = solver.get_particle_len();
         if length < 2 {
             return;
@@ -185,8 +180,8 @@ fn input_last(solver: &mut Solver, radius: &mut f32) {
         }
     } else if is_mouse_button_pressed(MouseButton::Right) {
         solver.add_circle(Circle {
-            point: Particle::new(&mouse_pos),
-            radius: *radius,
+            point: Particle::new(mouse_pos),
+            radius,
         });
         let length = solver.get_circles_len();
         if length < 2 {
@@ -204,25 +199,20 @@ fn input_last(solver: &mut Solver, radius: &mut f32) {
     }
 }
 
-fn input_spam(solver: &mut Solver, radius: &mut f32) {
+fn input_spam(solver: &mut Solver, radius: f32) {
     let mouse_pos: Vector2D<f32> = mouse_position().into();
 
     if is_mouse_button_down(MouseButton::Left) {
-        solver.add_particle(&mouse_pos);
+        solver.add_particle(mouse_pos);
     } else if is_mouse_button_down(MouseButton::Right) {
         solver.add_circle(Circle {
-            point: Particle::new(&mouse_pos),
-            radius: *radius,
+            point: Particle::new(mouse_pos),
+            radius,
         });
     }
 }
 
-fn handle_input(solver: &mut Solver, radius: &mut f32, spawn_mode: &SpawnMode) {
-    if mouse_wheel().1 > 0.0 {
-        *radius += 1.0;
-    } else if mouse_wheel().1 < 0.0 {
-        *radius -= 1.0;
-    }
+fn handle_input(solver: &mut Solver, radius: f32, spawn_mode: &SpawnMode) {
     match spawn_mode {
         SpawnMode::Single => input_single(solver, radius),
         SpawnMode::Grid => input_grid(solver, radius),
@@ -260,11 +250,16 @@ async fn main() {
 
         if dt < 0.1 {
             if !ui_hovered {
-                handle_input(&mut solver, &mut radius, &spawn_mode);
+                if mouse_wheel().1 > 0.0 {
+                    radius += 1.0;
+                } else if mouse_wheel().1 < 0.0 {
+                    radius -= 1.0;
+                }
+                handle_input(&mut solver, radius, &spawn_mode);
             }
 
             if !pause {
-                solver.update(&dt);
+                solver.update(dt);
             }
         }
 
