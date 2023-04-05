@@ -1,3 +1,3 @@
-# Softbody2D
+# Bendy2D Test Project
 
-This is a physics engine
+This is a test project for Bendy2D physics engine
