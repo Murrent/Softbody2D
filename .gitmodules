@@ -1,0 +1,3 @@
+[submodule "src/bendy2d"]
+	path = src/bendy2d
+	url = https://github.com/Murrent/bendy2d.git
