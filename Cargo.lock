@@ -80,6 +80,14 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 name = "bendy2d"
 version = "0.1.0"
 dependencies = [
+ "vector2d",
+]
+
+[[package]]
+name = "bendy2d_testing"
+version = "0.1.0"
+dependencies = [
+ "bendy2d",
  "egui-macroquad",
  "macroquad",
  "vector2d",

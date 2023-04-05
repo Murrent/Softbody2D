@@ -1,9 +1,7 @@
-mod physics;
-
-use crate::physics::circle::Circle;
-use crate::physics::link::{CircleLink, Link, ParticleLink};
-use crate::physics::particle::Particle;
-use crate::physics::solver::Solver;
+use bendy2d::circle::Circle;
+use bendy2d::link::{CircleLink, Link, ParticleLink};
+use bendy2d::particle::Particle;
+use bendy2d::solver::Solver;
 use egui_macroquad::egui::Pos2;
 use egui_macroquad::{egui, ui};
 use macroquad::math::{f32, u32};
