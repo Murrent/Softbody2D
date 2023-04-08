@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 macroquad = "0.3.25"
 egui-macroquad = "0.15.0"
-vector2d = "2.2.0"
+nalgebra = "0.32.2"
 bendy2d = { path = "src/bendy2d" }

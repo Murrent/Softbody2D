@@ -7,7 +7,7 @@ use egui_macroquad::egui::Pos2;
 use egui_macroquad::{egui, ui};
 use macroquad::math::{f32, u32};
 use macroquad::prelude::*;
-use vector2d::Vector2D;
+use nalgebra::Vector2;
 
 enum SpawnMode {
     Single,
@@ -25,13 +25,13 @@ fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
     }
 }
 
-fn spawn_particle_array(solver: &mut Solver, pos: Vector2D<f32>, count: Vector2D<u32>, dist: f32) {
+fn spawn_particle_array(solver: &mut Solver, pos: Vector2<f32>, count: Vector2<u32>, dist: f32) {
     for y in 0..count.y {
         for x in 0..count.x {
-            let particle_pos = Vector2D {
-                x: pos.x + x as f32 * dist,
-                y: pos.y + y as f32 * dist,
-            };
+            let particle_pos = Vector2::new(
+                pos.x + x as f32 * dist,
+                pos.y + y as f32 * dist,
+            );
             solver.add_particle(particle_pos);
             let length = solver.get_particle_len();
             if x > 0 {
@@ -76,17 +76,17 @@ fn spawn_particle_array(solver: &mut Solver, pos: Vector2D<f32>, count: Vector2D
 
 fn spawn_circle_array(
     solver: &mut Solver,
-    pos: Vector2D<f32>,
-    count: Vector2D<u32>,
+    pos: Vector2<f32>,
+    count: Vector2<u32>,
     dist: f32,
     radius: f32,
 ) {
     for y in 0..count.y {
         for x in 0..count.x {
-            let circle_pos = Vector2D {
-                x: pos.x + x as f32 * dist,
-                y: pos.y + y as f32 * dist,
-            };
+            let circle_pos = Vector2::new(
+                pos.x + x as f32 * dist,
+                pos.y + y as f32 * dist,
+            );
             solver.add_circle(Circle {
                 point: Particle::new(circle_pos),
                 radius,
@@ -132,9 +132,7 @@ fn spawn_circle_array(
     }
 }
 
-fn input_single(solver: &mut Solver, radius: f32) {
-    let mouse_pos: Vector2D<f32> = mouse_position().into();
-
+fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
     if is_mouse_button_pressed(MouseButton::Left) {
         solver.add_particle(mouse_pos);
     } else if is_mouse_button_pressed(MouseButton::Right) {
@@ -147,32 +145,28 @@ fn input_single(solver: &mut Solver, radius: f32) {
     }
 }
 
-fn input_grid(solver: &mut Solver, radius: f32) {
-    let mouse_pos: Vector2D<f32> = mouse_position().into();
-
+fn input_grid(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
     if is_mouse_button_pressed(MouseButton::Left) {
-        spawn_particle_array(solver, mouse_pos, Vector2D { x: 5, y: 5 }, radius);
+        spawn_particle_array(solver, mouse_pos, Vector2::new(5, 5), radius);
     } else if is_mouse_button_pressed(MouseButton::Right) {
         spawn_circle_array(
             solver,
             mouse_pos,
-            Vector2D { x: 5, y: 5 },
+            Vector2::new(5, 5),
             radius * 2.0,
             radius,
         )
     } else if is_mouse_button_pressed(MouseButton::Middle) {
         solver.add_polygon(Polygon::new(vec![
-            mouse_pos + Vector2D { x: -radius, y: -radius },
-            mouse_pos + Vector2D { x: radius, y: -radius },
-            mouse_pos + Vector2D { x: radius, y: radius },
-            mouse_pos + Vector2D { x: -radius, y: radius },
+            mouse_pos + Vector2::new(-radius, -radius),
+            mouse_pos + Vector2::new(radius, -radius),
+            mouse_pos + Vector2::new(radius, radius),
+            mouse_pos + Vector2::new(-radius, radius),
         ], false));
     }
 }
 
-fn input_last(solver: &mut Solver, radius: f32) {
-    let mouse_pos: Vector2D<f32> = mouse_position().into();
-
+fn input_last(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
     if is_mouse_button_pressed(MouseButton::Left) {
         solver.add_particle(mouse_pos);
         let length = solver.get_particle_len();
@@ -184,7 +178,7 @@ fn input_last(solver: &mut Solver, radius: f32) {
                 link: Link {
                     particle_a: length - 2,
                     particle_b: length - 1,
-                    target_distance: (mouse_pos - particle.pos).length(),
+                    target_distance: (mouse_pos - particle.pos).magnitude(),
                 },
             });
         }
@@ -202,16 +196,14 @@ fn input_last(solver: &mut Solver, radius: f32) {
                 link: Link {
                     particle_a: length - 2,
                     particle_b: length - 1,
-                    target_distance: (mouse_pos - particle.point.pos).length(),
+                    target_distance: (mouse_pos - particle.point.pos).magnitude(),
                 },
             });
         }
     }
 }
 
-fn input_spam(solver: &mut Solver, radius: f32) {
-    let mouse_pos: Vector2D<f32> = mouse_position().into();
-
+fn input_spam(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
     if is_mouse_button_down(MouseButton::Left) {
         solver.add_particle(mouse_pos);
     } else if is_mouse_button_down(MouseButton::Right) {
@@ -222,12 +214,12 @@ fn input_spam(solver: &mut Solver, radius: f32) {
     }
 }
 
-fn handle_input(solver: &mut Solver, radius: f32, spawn_mode: &SpawnMode) {
+fn handle_input(solver: &mut Solver, radius: f32, spawn_mode: &SpawnMode, mouse_pos: Vector2<f32>) {
     match spawn_mode {
-        SpawnMode::Single => input_single(solver, radius),
-        SpawnMode::Grid => input_grid(solver, radius),
-        SpawnMode::Last => input_last(solver, radius),
-        SpawnMode::Spam => input_spam(solver, radius),
+        SpawnMode::Single => input_single(solver, radius, mouse_pos),
+        SpawnMode::Grid => input_grid(solver, radius, mouse_pos),
+        SpawnMode::Last => input_last(solver, radius, mouse_pos),
+        SpawnMode::Spam => input_spam(solver, radius, mouse_pos),
     }
 }
 
@@ -241,11 +233,11 @@ async fn main() {
     next_frame().await;
 
     let mut solver = Solver::new();
-    solver.bounds.size = Vector2D {
-        x: screen_width(),
-        y: screen_height(),
-    };
-    solver.gravity = Vector2D::new(0.0, 100000.0);
+    solver.bounds.size = Vector2::new(
+        screen_width(),
+        screen_height(),
+    );
+    solver.gravity = Vector2::new(0.0, 100000.0);
 
     let mut radius = 10.0;
     let mut spawn_mode = SpawnMode::Single;
@@ -253,14 +245,18 @@ async fn main() {
     let mut pause = false;
     let mut last_update = get_time();
     loop {
-        if get_time() - last_update < 0.1 {
-            continue;
-        }
-        last_update = get_time();
+        // if get_time() - last_update < 0.1 {
+        //     continue;
+        // }
+        // last_update = get_time();
         clear_background(BLACK);
 
         let dt = 0.005;//get_frame_time();
-        let mouse_pos: Vector2D<f32> = mouse_position().into();
+        let mouse_pos: Vector2<f32>;
+        {
+            let _mouse_pos = mouse_position();
+            mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
+        }
 
         if dt < 0.1 {
             if !ui_hovered {
@@ -269,7 +265,7 @@ async fn main() {
                 } else if mouse_wheel().1 < 0.0 {
                     radius -= 1.0;
                 }
-                handle_input(&mut solver, radius, &spawn_mode);
+                handle_input(&mut solver, radius, &spawn_mode, mouse_pos);
             }
 
             if !pause {
@@ -344,7 +340,14 @@ async fn main() {
                             anchor.x,
                             anchor.y,
                             1.0,
-                            YELLOW,
+                            WHITE,
+                        );
+                        draw_text(
+                            format!("{}", i).as_str(),
+                            point.pos.x,
+                            point.pos.y,
+                            28.0,
+                            WHITE,
                         );
                     }
                 }
@@ -370,11 +373,11 @@ async fn main() {
                     ui.label(format!("Circles: {}", circle_count));
                     if ui.button("Reset").clicked() {
                         solver = Solver::new();
-                        solver.bounds.size = Vector2D {
-                            x: screen_width(),
-                            y: screen_height(),
-                        };
-                        solver.gravity = Vector2D::new(0.0, 100000.0);
+                        solver.bounds.size = Vector2::new(
+                            screen_width(),
+                            screen_height(),
+                        );
+                        solver.gravity = Vector2::new(0.0, 100000.0);
                     }
 
                     ui.label(format!("Spawn mode: {}", spawn_mode_string(&spawn_mode)));
