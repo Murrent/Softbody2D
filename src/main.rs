@@ -1,6 +1,7 @@
 use bendy2d::circle::Circle;
 use bendy2d::link::{CircleLink, Link, ParticleLink};
 use bendy2d::particle::Particle;
+use bendy2d::polygon::Polygon;
 use bendy2d::solver::Solver;
 use egui_macroquad::egui::Pos2;
 use egui_macroquad::{egui, ui};
@@ -141,6 +142,8 @@ fn input_single(solver: &mut Solver, radius: f32) {
             point: Particle::new(mouse_pos),
             radius,
         });
+    } else if is_mouse_button_pressed(MouseButton::Middle) {
+        solver.add_polygon(Polygon::circle(radius, mouse_pos, 4, false));
     }
 }
 
@@ -157,6 +160,13 @@ fn input_grid(solver: &mut Solver, radius: f32) {
             radius * 2.0,
             radius,
         )
+    } else if is_mouse_button_pressed(MouseButton::Middle) {
+        solver.add_polygon(Polygon::new(vec![
+            mouse_pos + Vector2D { x: -radius, y: -radius },
+            mouse_pos + Vector2D { x: radius, y: -radius },
+            mouse_pos + Vector2D { x: radius, y: radius },
+            mouse_pos + Vector2D { x: -radius, y: radius },
+        ], false));
     }
 }
 
@@ -241,11 +251,15 @@ async fn main() {
     let mut spawn_mode = SpawnMode::Single;
     let mut ui_hovered = false;
     let mut pause = false;
-
+    let mut last_update = get_time();
     loop {
-        clear_background(RED);
+        if get_time() - last_update < 0.1 {
+            continue;
+        }
+        last_update = get_time();
+        clear_background(BLACK);
 
-        let dt = get_frame_time();
+        let dt = 0.005;//get_frame_time();
         let mouse_pos: Vector2D<f32> = mouse_position().into();
 
         if dt < 0.1 {
@@ -308,6 +322,40 @@ async fn main() {
                     1.0,
                     YELLOW,
                 );
+            }
+        }
+
+        {
+            let polygons = solver.get_polygons();
+            for polygon in polygons.iter() {
+                let points = &polygon.points;
+                for (i, point) in points.iter().enumerate() {
+                    let point_b = points.get((i + 1) % points.len());
+                    if let Some(point_b) = point_b {
+                        draw_line(point.pos.x, point.pos.y, point_b.pos.x, point_b.pos.y, 1.0, GREEN);
+                    }
+                    draw_circle(point.pos.x, point.pos.y, 1.0, GREEN);
+                    let link = polygon.links.get(i);
+                    if let Some(link) = link {
+                        let anchor = link.anchor;
+                        draw_line(
+                            point.pos.x,
+                            point.pos.y,
+                            anchor.x,
+                            anchor.y,
+                            1.0,
+                            YELLOW,
+                        );
+                    }
+                }
+                draw_line(
+                    polygon.center.x,
+                    polygon.center.y,
+                    polygon.center.x + f32::cos(polygon.rotation) * 10.0,
+                    polygon.center.y + f32::sin(polygon.rotation) * 10.0,
+                    1.0,
+                    GREEN);
+                draw_circle(polygon.center.x, polygon.center.y, 1.0, WHITE);
             }
         }
 
