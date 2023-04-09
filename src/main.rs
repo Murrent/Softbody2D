@@ -141,7 +141,7 @@ fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
             radius,
         });
     } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::circle(radius, mouse_pos, 4, false));
+        solver.add_polygon(Polygon::circle(radius, mouse_pos, 10, false));
     }
 }
 
@@ -161,7 +161,6 @@ fn input_grid(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
             mouse_pos + Vector2::new(-radius, -radius),
             mouse_pos + Vector2::new(radius, -radius),
             mouse_pos + Vector2::new(radius, radius),
-            mouse_pos + Vector2::new(-radius, radius),
         ], false));
     }
 }
@@ -331,33 +330,27 @@ async fn main() {
                         draw_line(point.pos.x, point.pos.y, point_b.pos.x, point_b.pos.y, 1.0, GREEN);
                     }
                     draw_circle(point.pos.x, point.pos.y, 1.0, GREEN);
-                    let link = polygon.links.get(i);
-                    if let Some(link) = link {
-                        let anchor = link.anchor;
-                        draw_line(
-                            point.pos.x,
-                            point.pos.y,
-                            anchor.x,
-                            anchor.y,
-                            1.0,
-                            WHITE,
-                        );
-                        draw_text(
-                            format!("{}", i).as_str(),
-                            point.pos.x,
-                            point.pos.y,
-                            28.0,
-                            WHITE,
-                        );
-                    }
                 }
-                draw_line(
-                    polygon.center.x,
-                    polygon.center.y,
-                    polygon.center.x + f32::cos(polygon.rotation) * 10.0,
-                    polygon.center.y + f32::sin(polygon.rotation) * 10.0,
-                    1.0,
-                    GREEN);
+
+                // for (i, link) in polygon.particle_links.iter().enumerate() {
+                //     draw_line(
+                //         points[link.link.particle_a].pos.x,
+                //         points[link.link.particle_a].pos.y,
+                //         points[link.link.particle_b].pos.x,
+                //         points[link.link.particle_b].pos.y,
+                //         1.0,
+                //         WHITE,
+                //     );
+                //     // draw_text(
+                //     //     format!("{}", i).as_str(),
+                //     //     points[link.link.particle_a].pos.x,
+                //     //     points[link.link.particle_a].pos.y,
+                //     //     28.0,
+                //     //     WHITE,
+                //     // );
+                // }
+
+
                 draw_circle(polygon.center.x, polygon.center.y, 1.0, WHITE);
             }
         }
