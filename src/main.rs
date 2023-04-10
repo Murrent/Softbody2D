@@ -141,7 +141,7 @@ fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
             radius,
         });
     } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::circle(radius, mouse_pos, 10, false));
+        solver.add_polygon(Polygon::circle(radius, mouse_pos, 20, false));
     }
 }
 
