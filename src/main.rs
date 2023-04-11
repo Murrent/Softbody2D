@@ -141,7 +141,7 @@ fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
             radius,
         });
     } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::circle(radius, mouse_pos, 50, false));
+        solver.add_polygon(Polygon::circle(radius, mouse_pos, 20, false));
     }
 }
 
@@ -236,7 +236,7 @@ async fn main() {
         screen_width(),
         screen_height(),
     );
-    solver.gravity = Vector2::new(0.0, 100000.0);
+    solver.gravity = Vector2::new(0.0, 98.0);
 
     let mut radius = 10.0;
     let mut spawn_mode = SpawnMode::Single;
@@ -370,7 +370,7 @@ async fn main() {
                             screen_width(),
                             screen_height(),
                         );
-                        solver.gravity = Vector2::new(0.0, 100000.0);
+                        solver.gravity = Vector2::new(0.0, 98.0);
                     }
 
                     ui.label(format!("Spawn mode: {}", spawn_mode_string(&spawn_mode)));
