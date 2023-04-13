@@ -141,7 +141,7 @@ fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
             radius,
         });
     } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::circle(radius, mouse_pos, 20, false));
+        solver.add_polygon(Polygon::circle(radius, mouse_pos, 50, false));
     }
 }
 
@@ -236,7 +236,7 @@ async fn main() {
         screen_width(),
         screen_height(),
     );
-    solver.gravity = Vector2::new(0.0, 98.0);
+    solver.gravity = Vector2::new(0.0, 1000.0);
 
     let mut radius = 10.0;
     let mut spawn_mode = SpawnMode::Single;
@@ -331,24 +331,24 @@ async fn main() {
                     }
                     draw_circle(point.pos.x, point.pos.y, 1.0, GREEN);
                 }
-
-                // for (i, link) in polygon.particle_links.iter().enumerate() {
-                //     draw_line(
-                //         points[link.link.particle_a].pos.x,
-                //         points[link.link.particle_a].pos.y,
-                //         points[link.link.particle_b].pos.x,
-                //         points[link.link.particle_b].pos.y,
-                //         1.0,
-                //         WHITE,
-                //     );
-                //     // draw_text(
-                //     //     format!("{}", i).as_str(),
-                //     //     points[link.link.particle_a].pos.x,
-                //     //     points[link.link.particle_a].pos.y,
-                //     //     28.0,
-                //     //     WHITE,
-                //     // );
-                // }
+                /*
+                for (i, link) in polygon.particle_links.iter().enumerate() {
+                    draw_line(
+                        points[link.link.particle_a].pos.x,
+                        points[link.link.particle_a].pos.y,
+                        points[link.link.particle_b].pos.x,
+                        points[link.link.particle_b].pos.y,
+                        1.0,
+                        WHITE,
+                    );
+                    // draw_text(
+                    //     format!("{}", i).as_str(),
+                    //     points[link.link.particle_a].pos.x,
+                    //     points[link.link.particle_a].pos.y,
+                    //     28.0,
+                    //     WHITE,
+                    // );
+                }*/
 
 
                 draw_circle(polygon.center.x, polygon.center.y, 1.0, WHITE);
@@ -370,7 +370,7 @@ async fn main() {
                             screen_width(),
                             screen_height(),
                         );
-                        solver.gravity = Vector2::new(0.0, 98.0);
+                        solver.gravity = Vector2::new(0.0, 1000.0);
                     }
 
                     ui.label(format!("Spawn mode: {}", spawn_mode_string(&spawn_mode)));
