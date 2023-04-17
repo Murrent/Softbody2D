@@ -16,12 +16,76 @@ enum SpawnMode {
     Spam,
 }
 
-fn spawn_mode_string(spawn_mode: &SpawnMode) -> String {
-    match spawn_mode {
-        SpawnMode::Single => "Single".to_string(),
-        SpawnMode::Grid => "Grid".to_string(),
-        SpawnMode::Last => "Last".to_string(),
-        SpawnMode::Spam => "Spam".to_string(),
+impl SpawnMode {
+    fn name(&self) -> &str {
+        match *self {
+            SpawnMode::Single => "Single",
+            SpawnMode::Grid => "Grid",
+            SpawnMode::Last => "Last",
+            SpawnMode::Spam => "Spam",
+        }
+    }
+
+    fn increase(&mut self) {
+        *self = match *self {
+            SpawnMode::Single => SpawnMode::Grid,
+            SpawnMode::Grid => SpawnMode::Last,
+            SpawnMode::Last => SpawnMode::Spam,
+            SpawnMode::Spam => SpawnMode::Single,
+        }
+    }
+}
+
+enum SpawnType {
+    Particle,
+    Circle,
+    Polygon,
+}
+
+impl SpawnType {
+    fn name(&self) -> &str {
+        match *self {
+            SpawnType::Particle => "Particle",
+            SpawnType::Circle => "Circle",
+            SpawnType::Polygon => "Polygon",
+        }
+    }
+
+    fn increase(&mut self) {
+        *self = match *self {
+            SpawnType::Particle => SpawnType::Circle,
+            SpawnType::Circle => SpawnType::Polygon,
+            SpawnType::Polygon => SpawnType::Particle,
+        }
+    }
+}
+
+enum TestCase {
+    Triangle1,
+    Triangle2,
+    Triangle3,
+    Circle1,
+    Circle2,
+}
+
+impl TestCase {
+    fn name(&self) -> &str {
+        match *self {
+            TestCase::Triangle1 => "Triangle1",
+            TestCase::Triangle2 => "Triangle2",
+            TestCase::Triangle3 => "Triangle3",
+            TestCase::Circle1 => "Circle1",
+            TestCase::Circle2 => "Circle2",
+        }
+    }
+    fn increase(&mut self) {
+        *self = match *self {
+            TestCase::Triangle1 => TestCase::Triangle2,
+            TestCase::Triangle2 => TestCase::Triangle3,
+            TestCase::Triangle3 => TestCase::Circle1,
+            TestCase::Circle1 => TestCase::Circle2,
+            TestCase::Circle2 => TestCase::Triangle1,
+        }
     }
 }
 
@@ -126,90 +190,507 @@ fn spawn_circle_array(
     }
 }
 
-fn input_single(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
-    if is_mouse_button_pressed(MouseButton::Left) {
-        solver.add_particle(mouse_pos);
-    } else if is_mouse_button_pressed(MouseButton::Right) {
-        solver.add_circle(Circle {
-            point: Particle::new(mouse_pos),
+struct Testbed {
+    solver: Solver,
+
+    radius: f32,
+    spawn_mode: SpawnMode,
+    test_case: TestCase,
+    spawn_type: SpawnType,
+    point_count: usize,
+    // Overlay vectors
+    points_vec: Vec<Vector2<f32>>,
+    circles_vec: Vec<Vector2<f32>>,
+    links_vec: Vec<Vector2<usize>>,
+
+    ui_hovered: bool,
+    pause: bool,
+    last_update: f64,
+    mouse_pos: Vector2<f32>,
+    dt: f32,
+}
+
+impl Testbed {
+    fn new() -> Self {
+        let mut solver = Solver::new();
+        solver.bounds.size = Vector2::new(screen_width(), screen_height());
+        solver.gravity = Vector2::new(0.0, 1000.0);
+
+        let radius = 10.0;
+        let spawn_mode = SpawnMode::Single;
+        let test_case = TestCase::Triangle1;
+        let spawn_type = SpawnType::Particle;
+        let point_count = 5;
+        let points_vec = Vec::<Vector2<f32>>::new();
+        let circles_vec = Vec::<Vector2<f32>>::new();
+        let links_vec = Vec::<Vector2<usize>>::new();
+
+        let ui_hovered = false;
+        let pause = false;
+        let last_update = get_time();
+        let mouse_pos = Vector2::<f32>::new(0.0, 0.0);
+        let dt = 0.0;
+
+        Self {
+            solver,
             radius,
-        });
-    } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::circle(radius, mouse_pos, 25, false));
+            spawn_mode,
+            test_case,
+            spawn_type,
+            point_count,
+            points_vec,
+            circles_vec,
+            links_vec,
+            ui_hovered,
+            pause,
+            last_update,
+            mouse_pos,
+            dt,
+        }
     }
-}
 
-fn input_grid(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
-    if is_mouse_button_pressed(MouseButton::Left) {
-        spawn_particle_array(solver, mouse_pos, Vector2::new(5, 5), radius);
-    } else if is_mouse_button_pressed(MouseButton::Right) {
-        spawn_circle_array(solver, mouse_pos, Vector2::new(5, 5), radius * 2.0, radius)
-    } else if is_mouse_button_pressed(MouseButton::Middle) {
-        solver.add_polygon(Polygon::new(
-            vec![
-                mouse_pos + Vector2::new(-radius, -radius),
-                mouse_pos + Vector2::new(radius, -radius),
-                mouse_pos + Vector2::new(radius, radius),
-            ],
-            false,
-        ));
+    fn update(&mut self) {
+        self.dt = 0.005; //get_frame_time();
+        {
+            let _mouse_pos = mouse_position();
+            self.mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
+        }
+
+        if self.dt < 0.1 {
+            if !self.ui_hovered {
+                if mouse_wheel().1 > 0.0 {
+                    self.radius += 1.0;
+                } else if mouse_wheel().1 < 0.0 {
+                    self.radius -= 1.0;
+                }
+                self.overlay_clear();
+                self.handle_input();
+            }
+
+            if !self.pause {
+                self.solver.update(self.dt);
+            }
+        }
     }
-}
 
-fn input_last(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
-    if is_mouse_button_pressed(MouseButton::Left) {
-        solver.add_particle(mouse_pos);
-        let length = solver.get_particle_len();
-        if length < 2 {
+    fn handle_input(&mut self) {
+        match self.spawn_mode {
+            SpawnMode::Single => self.input_single(),
+            SpawnMode::Grid => self.input_grid(),
+            SpawnMode::Last => self.input_last(),
+            SpawnMode::Spam => self.input_spam(),
+        }
+    }
+
+    fn input_single(&mut self) {
+        let should_spawn = is_mouse_button_pressed(MouseButton::Left);
+        match self.spawn_type {
+            SpawnType::Particle => {
+                self.overlay_particle();
+                if should_spawn {
+                    self.solver.add_particle(self.mouse_pos);
+                }
+            }
+            SpawnType::Circle => {
+                self.overlay_circle();
+                if should_spawn {
+                    self.solver.add_circle(Circle {
+                        point: Particle::new(self.mouse_pos),
+                        radius: self.radius,
+                    });
+                }
+            }
+            SpawnType::Polygon => {
+                self.overlay_circle_polygon();
+                if should_spawn {
+                    self.solver.add_polygon(Polygon::circle(
+                        self.radius,
+                        self.mouse_pos,
+                        self.point_count,
+                        false,
+                    ));
+                }
+            }
+        }
+    }
+
+    fn input_grid(&mut self) {
+        let should_spawn = is_mouse_button_pressed(MouseButton::Left);
+        match self.spawn_type {
+            SpawnType::Particle => {
+                self.overlay_particle_grid();
+                if should_spawn {
+                    spawn_particle_array(
+                        &mut self.solver,
+                        self.mouse_pos,
+                        Vector2::new(5, 5),
+                        self.radius,
+                    );
+                }
+            }
+            SpawnType::Circle => {
+                self.overlay_circle_grid();
+                if should_spawn {
+                    spawn_circle_array(
+                        &mut self.solver,
+                        self.mouse_pos,
+                        Vector2::new(5, 5),
+                        self.radius * 2.0,
+                        self.radius,
+                    );
+                }
+            }
+            SpawnType::Polygon => {
+                self.overlay_triangle();
+                if should_spawn {
+                    self.solver.add_polygon(Polygon::new(
+                        self.points_vec
+                            .clone()
+                            .iter_mut()
+                            .map(|v| *v + self.mouse_pos)
+                            .collect(),
+                        false,
+                    ));
+                }
+            }
+        }
+    }
+
+    fn input_last(&mut self) {
+        let should_spawn = is_mouse_button_pressed(MouseButton::Left);
+        match self.spawn_type {
+            SpawnType::Particle => {
+                self.overlay_last_particle();
+                if should_spawn {
+                    self.solver.add_particle(self.mouse_pos);
+                    let length = self.solver.get_particle_len();
+                    if length < 2 {
+                        return;
+                    }
+                    if let Some(particle) = self.solver.get_particle(length - 2) {
+                        self.solver.add_particle_link(ParticleLink {
+                            link: Link {
+                                particle_a: length - 2,
+                                particle_b: length - 1,
+                                target_distance: (self.mouse_pos - particle.pos).magnitude(),
+                            },
+                        });
+                    }
+                }
+            }
+            SpawnType::Circle => {
+                self.overlay_last_circle();
+                if should_spawn {
+                    self.solver.add_circle(Circle {
+                        point: Particle::new(self.mouse_pos),
+                        radius: self.radius,
+                    });
+                    let length = self.solver.get_circles_len();
+                    if length < 2 {
+                        return;
+                    }
+                    if let Some(particle) = self.solver.get_circle(length - 2) {
+                        self.solver.add_circle_link(CircleLink {
+                            link: Link {
+                                particle_a: length - 2,
+                                particle_b: length - 1,
+                                target_distance: (self.mouse_pos - particle.point.pos).magnitude(),
+                            },
+                        });
+                    }
+                }
+            }
+            SpawnType::Polygon => {
+
+            }
+        }
+    }
+
+    fn input_spam(&mut self) {
+        let should_spawn = is_mouse_button_pressed(MouseButton::Left);
+        match self.spawn_type {
+            SpawnType::Particle => {
+                self.overlay_particle();
+                if should_spawn {
+                    self.solver.add_particle(self.mouse_pos);
+                }
+            }
+            SpawnType::Circle => {
+                self.overlay_circle();
+                if should_spawn {
+                    self.solver.add_circle(Circle {
+                        point: Particle::new(self.mouse_pos),
+                        radius: self.radius,
+                    });
+                }
+            }
+            SpawnType::Polygon => {
+
+            }
+        }
+    }
+
+    fn overlay_clear(&mut self) {
+        self.points_vec.clear();
+        self.links_vec.clear();
+        self.circles_vec.clear();
+    }
+
+    fn overlay_particle(&mut self) {
+        self.points_vec.push(Vector2::new(0.0, 0.0));
+    }
+
+    fn overlay_circle(&mut self) {
+        self.circles_vec.push(Vector2::new(0.0, 0.0));
+    }
+
+    fn overlay_last_particle(&mut self) {
+        self.points_vec.push(Vector2::new(0.0, 0.0));
+        let length = self.solver.get_particle_len();
+        if length < 1 {
             return;
         }
-        if let Some(particle) = solver.get_particle(length - 2) {
-            solver.add_particle_link(ParticleLink {
-                link: Link {
-                    particle_a: length - 2,
-                    particle_b: length - 1,
-                    target_distance: (mouse_pos - particle.pos).magnitude(),
-                },
-            });
+        if let Some(particle) = self.solver.get_particle(length - 1) {
+            self.points_vec.push(particle.pos - self.mouse_pos);
+            self.links_vec.push(Vector2::new(0, 1));
         }
-    } else if is_mouse_button_pressed(MouseButton::Right) {
-        solver.add_circle(Circle {
-            point: Particle::new(mouse_pos),
-            radius,
-        });
-        let length = solver.get_circles_len();
-        if length < 2 {
+    }
+
+    fn overlay_last_circle(&mut self) {
+        self.circles_vec.push(Vector2::new(0.0, 0.0));
+        let length = self.solver.get_circles_len();
+        if length < 1 {
             return;
         }
-        if let Some(particle) = solver.get_circle(length - 2) {
-            solver.add_circle_link(CircleLink {
-                link: Link {
-                    particle_a: length - 2,
-                    particle_b: length - 1,
-                    target_distance: (mouse_pos - particle.point.pos).magnitude(),
-                },
-            });
+        if let Some(particle) = self.solver.get_circle(length - 1) {
+            self.circles_vec.push(particle.point.pos - self.mouse_pos);
+            self.links_vec.push(Vector2::new(0, 1));
         }
     }
-}
 
-fn input_spam(solver: &mut Solver, radius: f32, mouse_pos: Vector2<f32>) {
-    if is_mouse_button_down(MouseButton::Left) {
-        solver.add_particle(mouse_pos);
-    } else if is_mouse_button_down(MouseButton::Right) {
-        solver.add_circle(Circle {
-            point: Particle::new(mouse_pos),
-            radius,
-        });
+    fn overlay_triangle(&mut self) {
+        self.points_vec
+            .push(Vector2::new(-self.radius, -self.radius));
+        self.points_vec
+            .push(Vector2::new(self.radius, -self.radius));
+        self.points_vec.push(Vector2::new(self.radius, self.radius));
+        self.links_vec.push(Vector2::new(0, 1));
+        self.links_vec.push(Vector2::new(1, 2));
+        self.links_vec.push(Vector2::new(2, 0));
     }
-}
 
-fn handle_input(solver: &mut Solver, radius: f32, spawn_mode: &SpawnMode, mouse_pos: Vector2<f32>) {
-    match spawn_mode {
-        SpawnMode::Single => input_single(solver, radius, mouse_pos),
-        SpawnMode::Grid => input_grid(solver, radius, mouse_pos),
-        SpawnMode::Last => input_last(solver, radius, mouse_pos),
-        SpawnMode::Spam => input_spam(solver, radius, mouse_pos),
+    fn overlay_circle_polygon(&mut self) {
+        let count = self.point_count;
+        let dist = self.radius;
+        for i in 0..count {
+            let angle = i as f32 / count as f32 * std::f32::consts::PI * 2.0;
+            self.points_vec
+                .push(Vector2::new(angle.cos() * dist, angle.sin() * dist));
+            let length = self.points_vec.len();
+            if i > 0 {
+                self.links_vec.push(Vector2::new(length - 2, length - 1));
+            }
+            if i == count - 1 {
+                self.links_vec.push(Vector2::new(length - 1, 0));
+            }
+        }
+    }
+
+    fn overlay_particle_grid(&mut self) {
+        let count = self.point_count;
+        let dist = self.radius;
+        for y in 0..count {
+            for x in 0..count {
+                self.points_vec
+                    .push(Vector2::new(x as f32 * dist, y as f32 * dist));
+                let length = self.points_vec.len();
+                self.overlay_grid_link(x, y, count, length);
+            }
+        }
+    }
+
+    fn overlay_circle_grid(&mut self) {
+        let count = self.point_count;
+        let dist = self.radius * 2.0;
+        for y in 0..count {
+            for x in 0..count {
+                self.circles_vec
+                    .push(Vector2::new(x as f32 * dist, y as f32 * dist));
+                let length = self.circles_vec.len();
+                self.overlay_grid_link(x, y, count, length);
+            }
+        }
+    }
+
+    fn overlay_grid_link(&mut self, x: usize, y: usize, count: usize, length: usize) {
+        if x > 0 {
+            self.links_vec.push(Vector2::new(length - 2, length - 1));
+        }
+        if y > 0 {
+            self.links_vec
+                .push(Vector2::new(length - count - 1, length - 1));
+
+            if x < count - 1 {
+                self.links_vec
+                    .push(Vector2::new(length - count, length - 1));
+            }
+        }
+        if x > 0 && y > 0 {
+            self.links_vec
+                .push(Vector2::new(length - count - 2, length - 1));
+        }
+    }
+
+    fn draw(&self) {
+        // Circles
+        let circles = self.solver.get_circles();
+        // Draw circles
+        for circle in circles.iter() {
+            draw_circle(circle.point.pos.x, circle.point.pos.y, circle.radius, BLUE);
+        }
+        // Draw circle links
+        let circles = self.solver.get_circles();
+        for link in self.solver.get_circle_links().iter() {
+            let particle_a = circles[link.link.particle_a].point.pos;
+            let particle_b = circles[link.link.particle_b].point.pos;
+            draw_line(
+                particle_a.x,
+                particle_a.y,
+                particle_b.x,
+                particle_b.y,
+                1.0,
+                WHITE,
+            );
+        }
+
+        // Particles
+        let particles = self.solver.get_particles();
+        // Draw particles
+        for particle in particles.iter() {
+            draw_circle(particle.pos.x, particle.pos.y, 3.0, GREEN);
+        }
+        // Draw particle links
+        for link in self.solver.get_particle_links().iter() {
+            let particle_a = particles[link.link.particle_a].pos;
+            let particle_b = particles[link.link.particle_b].pos;
+            draw_line(
+                particle_a.x,
+                particle_a.y,
+                particle_b.x,
+                particle_b.y,
+                1.0,
+                WHITE,
+            );
+        }
+
+        // Draw polygons
+        for polygon in self.solver.get_polygons().iter() {
+            for i in 0..polygon.points.len() {
+                let point_a = polygon.points[i];
+                let point_b = polygon.points[(i + 1) % polygon.points.len()];
+                draw_line(
+                    point_a.pos.x,
+                    point_a.pos.y,
+                    point_b.pos.x,
+                    point_b.pos.y,
+                    3.0,
+                    ORANGE,
+                );
+            }
+        }
+
+        let overlay_color = Color::new(1.0, 0.0, 0.0, 0.5);
+        // Draw overlay points
+        for point in self.points_vec.iter() {
+            let point = self.mouse_pos + point;
+            draw_circle(point.x, point.y, 3.0, overlay_color);
+        }
+        // Draw overlay circles
+        for circle in self.circles_vec.iter() {
+            let circle = self.mouse_pos + circle;
+            draw_circle(circle.x, circle.y, self.radius, overlay_color);
+        }
+        // Draw overlay links
+        if self.points_vec.is_empty() {
+            for link in self.links_vec.iter() {
+                let particle_a = self.mouse_pos + self.circles_vec[link.x];
+                let particle_b = self.mouse_pos + self.circles_vec[link.y];
+                draw_line(
+                    particle_a.x,
+                    particle_a.y,
+                    particle_b.x,
+                    particle_b.y,
+                    3.0,
+                    overlay_color,
+                );
+            }
+        }
+        else {
+            for link in self.links_vec.iter() {
+                let particle_a = self.mouse_pos + self.points_vec[link.x];
+                let particle_b = self.mouse_pos + self.points_vec[link.y];
+                draw_line(
+                    particle_a.x,
+                    particle_a.y,
+                    particle_b.x,
+                    particle_b.y,
+                    3.0,
+                    overlay_color,
+                );
+            }
+        }
+
+    }
+
+    fn draw_ui(&mut self) {
+        ui(|egui_ctx| {
+            let hovered = egui::Window::new("Information")
+                .show(egui_ctx, |ui| {
+                    ui.label(format!("FPS: {}", get_fps().to_string().as_str()));
+                    ui.label(format!("ms: {}", self.dt));
+                    ui.label(format!("Mouse: {} {}", self.mouse_pos.x, self.mouse_pos.y));
+                    ui.label(format!("Radius: {}", self.radius));
+                    ui.label(format!("Particles: {}", self.solver.get_particle_len()));
+                    ui.label(format!("Circles: {}", self.solver.get_circles_len()));
+                    if ui.button("Reset").clicked() {
+                        self.solver = Solver::new();
+                        self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
+                        self.solver.gravity = Vector2::new(0.0, 1000.0);
+                    }
+
+                    ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
+                    if ui.button("Change mode").clicked() {
+                        self.spawn_mode.increase();
+                    }
+                    ui.label(format!("Test case: {}", self.test_case.name()));
+                    if ui.button("Change case").clicked() {
+                        self.test_case.increase();
+                    }
+                    ui.label(format!("Spawn type: {}", self.spawn_type.name()));
+                    if ui.button("Change type").clicked() {
+                        self.spawn_type.increase();
+                    }
+                    if ui
+                        .button(match self.pause {
+                            true => "Resume",
+                            false => "Pause",
+                        })
+                        .clicked()
+                    {
+                        self.pause = !self.pause;
+                    }
+                })
+                .unwrap()
+                .response
+                .rect
+                .contains(Pos2 {
+                    x: self.mouse_pos.x,
+                    y: self.mouse_pos.y,
+                });
+            self.ui_hovered = hovered;
+        });
+
+        egui_macroquad::draw();
     }
 }
 
@@ -222,15 +703,7 @@ async fn main() {
     clear_background(RED);
     next_frame().await;
 
-    let mut solver = Solver::new();
-    solver.bounds.size = Vector2::new(screen_width(), screen_height());
-    solver.gravity = Vector2::new(0.0, 1000.0);
-
-    let mut radius = 10.0;
-    let mut spawn_mode = SpawnMode::Single;
-    let mut ui_hovered = false;
-    let mut pause = false;
-    let mut last_update = get_time();
+    let mut testbed = Testbed::new();
     loop {
         // if get_time() - last_update < 0.1 {
         //     continue;
@@ -238,162 +711,11 @@ async fn main() {
         // last_update = get_time();
         clear_background(BLACK);
 
-        let dt = 0.005; //get_frame_time();
-        let mouse_pos: Vector2<f32>;
-        {
-            let _mouse_pos = mouse_position();
-            mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
-        }
+        testbed.update();
 
-        if dt < 0.1 {
-            if !ui_hovered {
-                if mouse_wheel().1 > 0.0 {
-                    radius += 1.0;
-                } else if mouse_wheel().1 < 0.0 {
-                    radius -= 1.0;
-                }
-                handle_input(&mut solver, radius, &spawn_mode, mouse_pos);
-            }
+        testbed.draw();
+        testbed.draw_ui();
 
-            if !pause {
-                solver.update(dt);
-            }
-        }
-
-        let particle_count;
-        let circle_count;
-
-        {
-            let particles = solver.get_particles();
-            for particle in particles.iter() {
-                draw_circle(particle.pos.x, particle.pos.y, 1.0, WHITE);
-                //particle.add_force_towards(&mouse_pos, &100.0);
-            }
-            particle_count = particles.len();
-
-            let links = solver.get_particle_links();
-            for link in links.iter() {
-                let particle_a = particles[link.link.particle_a];
-                let particle_b = particles[link.link.particle_b];
-                draw_line(
-                    particle_a.pos.x,
-                    particle_a.pos.y,
-                    particle_b.pos.x,
-                    particle_b.pos.y,
-                    1.0,
-                    GREEN,
-                );
-            }
-        }
-
-        {
-            let circles = solver.get_circles();
-            for circle in circles.iter() {
-                draw_circle(circle.point.pos.x, circle.point.pos.y, circle.radius, BLUE);
-            }
-            circle_count = circles.len();
-
-            let links = solver.get_circle_links();
-            for link in links.iter() {
-                let particle_a = circles[link.link.particle_a];
-                let particle_b = circles[link.link.particle_b];
-                draw_line(
-                    particle_a.point.pos.x,
-                    particle_a.point.pos.y,
-                    particle_b.point.pos.x,
-                    particle_b.point.pos.y,
-                    1.0,
-                    YELLOW,
-                );
-            }
-        }
-
-        {
-            let polygons = solver.get_polygons();
-            for polygon in polygons.iter() {
-                let points = &polygon.points;
-                for (i, point) in points.iter().enumerate() {
-                    let point_b = points.get((i + 1) % points.len());
-                    if let Some(point_b) = point_b {
-                        draw_line(
-                            point.pos.x,
-                            point.pos.y,
-                            point_b.pos.x,
-                            point_b.pos.y,
-                            1.0,
-                            GREEN,
-                        );
-                    }
-                    draw_circle(point.pos.x, point.pos.y, 1.0, GREEN);
-                }
-                /*
-                for (i, link) in polygon.particle_links.iter().enumerate() {
-                    draw_line(
-                        points[link.link.particle_a].pos.x,
-                        points[link.link.particle_a].pos.y,
-                        points[link.link.particle_b].pos.x,
-                        points[link.link.particle_b].pos.y,
-                        1.0,
-                        WHITE,
-                    );
-                    // draw_text(
-                    //     format!("{}", i).as_str(),
-                    //     points[link.link.particle_a].pos.x,
-                    //     points[link.link.particle_a].pos.y,
-                    //     28.0,
-                    //     WHITE,
-                    // );
-                }*/
-
-                draw_circle(polygon.center.x, polygon.center.y, 1.0, WHITE);
-            }
-        }
-
-        ui(|egui_ctx| {
-            let hovered = egui::Window::new("Information")
-                .show(egui_ctx, |ui| {
-                    ui.label(format!("FPS: {}", get_fps().to_string().as_str()));
-                    ui.label(format!("ms: {}", dt));
-                    ui.label(format!("Mouse: {} {}", mouse_pos.x, mouse_pos.y));
-                    ui.label(format!("Radius: {}", radius));
-                    ui.label(format!("Particles: {}", particle_count));
-                    ui.label(format!("Circles: {}", circle_count));
-                    if ui.button("Reset").clicked() {
-                        solver = Solver::new();
-                        solver.bounds.size = Vector2::new(screen_width(), screen_height());
-                        solver.gravity = Vector2::new(0.0, 1000.0);
-                    }
-
-                    ui.label(format!("Spawn mode: {}", spawn_mode_string(&spawn_mode)));
-                    if ui.button("Change mode").clicked() {
-                        match spawn_mode {
-                            SpawnMode::Single => spawn_mode = SpawnMode::Grid,
-                            SpawnMode::Grid => spawn_mode = SpawnMode::Last,
-                            SpawnMode::Last => spawn_mode = SpawnMode::Spam,
-                            SpawnMode::Spam => spawn_mode = SpawnMode::Single,
-                        }
-                    }
-                    if ui
-                        .button(match pause {
-                            true => "Resume",
-                            false => "Pause",
-                        })
-                        .clicked()
-                    {
-                        pause = !pause;
-                    }
-                })
-                .unwrap()
-                .response
-                .rect
-                .contains(Pos2 {
-                    x: mouse_pos.x,
-                    y: mouse_pos.y,
-                });
-            ui_hovered = hovered;
-        });
-
-        egui_macroquad::draw();
         next_frame().await
     }
 }
