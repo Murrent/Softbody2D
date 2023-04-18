@@ -205,7 +205,6 @@ struct Testbed {
 
     ui_hovered: bool,
     pause: bool,
-    last_update: f64,
     mouse_pos: Vector2<f32>,
     dt: f32,
 }
@@ -227,7 +226,6 @@ impl Testbed {
 
         let ui_hovered = false;
         let pause = false;
-        let last_update = get_time();
         let mouse_pos = Vector2::<f32>::new(0.0, 0.0);
         let dt = 0.0;
 
@@ -243,7 +241,6 @@ impl Testbed {
             links_vec,
             ui_hovered,
             pause,
-            last_update,
             mouse_pos,
             dt,
         }
@@ -301,7 +298,7 @@ impl Testbed {
                 }
             }
             SpawnType::Polygon => {
-                self.overlay_circle_polygon();
+                self.overlay_circle_polygon(Vector2::zeros());
                 if should_spawn {
                     self.solver.add_polygon(Polygon::circle(
                         self.radius,
@@ -341,16 +338,29 @@ impl Testbed {
                 }
             }
             SpawnType::Polygon => {
-                self.overlay_triangle();
+                for x in 0..5 {
+                    for y in 0..5 {
+                        self.overlay_circle_polygon(Vector2::new(
+                            x as f32 * self.radius * 2.2,
+                            y as f32 * self.radius * 2.2,
+                        ));
+                    }
+                }
                 if should_spawn {
-                    self.solver.add_polygon(Polygon::new(
-                        self.points_vec
-                            .clone()
-                            .iter_mut()
-                            .map(|v| *v + self.mouse_pos)
-                            .collect(),
-                        false,
-                    ));
+                    for x in 0..5 {
+                        for y in 0..5 {
+                            let offset = Vector2::new(
+                                x as f32 * self.radius * 2.2,
+                                y as f32 * self.radius * 2.2,
+                            );
+                            self.solver.add_polygon(Polygon::circle(
+                                self.radius,
+                                self.mouse_pos + offset,
+                                self.point_count,
+                                false,
+                            ));
+                        }
+                    }
                 }
             }
         }
@@ -400,14 +410,12 @@ impl Testbed {
                     }
                 }
             }
-            SpawnType::Polygon => {
-
-            }
+            SpawnType::Polygon => {}
         }
     }
 
     fn input_spam(&mut self) {
-        let should_spawn = is_mouse_button_pressed(MouseButton::Left);
+        let should_spawn = is_mouse_button_down(MouseButton::Left);
         match self.spawn_type {
             SpawnType::Particle => {
                 self.overlay_particle();
@@ -424,9 +432,7 @@ impl Testbed {
                     });
                 }
             }
-            SpawnType::Polygon => {
-
-            }
+            SpawnType::Polygon => {}
         }
     }
 
@@ -468,30 +474,20 @@ impl Testbed {
         }
     }
 
-    fn overlay_triangle(&mut self) {
-        self.points_vec
-            .push(Vector2::new(-self.radius, -self.radius));
-        self.points_vec
-            .push(Vector2::new(self.radius, -self.radius));
-        self.points_vec.push(Vector2::new(self.radius, self.radius));
-        self.links_vec.push(Vector2::new(0, 1));
-        self.links_vec.push(Vector2::new(1, 2));
-        self.links_vec.push(Vector2::new(2, 0));
-    }
-
-    fn overlay_circle_polygon(&mut self) {
+    fn overlay_circle_polygon(&mut self, offset: Vector2<f32>) {
         let count = self.point_count;
         let dist = self.radius;
+        let start = self.points_vec.len();
         for i in 0..count {
             let angle = i as f32 / count as f32 * std::f32::consts::PI * 2.0;
             self.points_vec
-                .push(Vector2::new(angle.cos() * dist, angle.sin() * dist));
+                .push(offset + Vector2::new(angle.cos() * dist, angle.sin() * dist));
             let length = self.points_vec.len();
             if i > 0 {
                 self.links_vec.push(Vector2::new(length - 2, length - 1));
             }
             if i == count - 1 {
-                self.links_vec.push(Vector2::new(length - 1, 0));
+                self.links_vec.push(Vector2::new(length - 1, start));
             }
         }
     }
@@ -585,9 +581,9 @@ impl Testbed {
 
         // Draw polygons
         for polygon in self.solver.get_polygons().iter() {
-            for i in 0..polygon.points.len() {
-                let point_a = polygon.points[i];
-                let point_b = polygon.points[(i + 1) % polygon.points.len()];
+            for i in 0..polygon.particles.len() {
+                let point_a = polygon.particles[i];
+                let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
                 draw_line(
                     point_a.pos.x,
                     point_a.pos.y,
@@ -624,8 +620,7 @@ impl Testbed {
                     overlay_color,
                 );
             }
-        }
-        else {
+        } else {
             for link in self.links_vec.iter() {
                 let particle_a = self.mouse_pos + self.points_vec[link.x];
                 let particle_b = self.mouse_pos + self.points_vec[link.y];
@@ -639,7 +634,6 @@ impl Testbed {
                 );
             }
         }
-
     }
 
     fn draw_ui(&mut self) {
@@ -652,11 +646,9 @@ impl Testbed {
                     ui.label(format!("Radius: {}", self.radius));
                     ui.label(format!("Particles: {}", self.solver.get_particle_len()));
                     ui.label(format!("Circles: {}", self.solver.get_circles_len()));
-                    if ui.button("Reset").clicked() {
-                        self.solver = Solver::new();
-                        self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
-                        self.solver.gravity = Vector2::new(0.0, 1000.0);
-                    }
+                    ui.label(format!("Polygons: {}", self.solver.get_polygons_len()));
+                    ui.label(format!("Point count: {}", self.point_count));
+                    ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
@@ -678,6 +670,11 @@ impl Testbed {
                         .clicked()
                     {
                         self.pause = !self.pause;
+                    }
+                    if ui.button("Reset").clicked() {
+                        self.solver = Solver::new();
+                        self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
+                        self.solver.gravity = Vector2::new(0.0, 1000.0);
                     }
                 })
                 .unwrap()
