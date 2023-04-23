@@ -205,6 +205,7 @@ struct Testbed {
 
     ui_hovered: bool,
     pause: bool,
+    step: bool,
     mouse_pos: Vector2<f32>,
     dt: f32,
 }
@@ -226,6 +227,7 @@ impl Testbed {
 
         let ui_hovered = false;
         let pause = false;
+        let step = false;
         let mouse_pos = Vector2::<f32>::new(0.0, 0.0);
         let dt = 0.0;
 
@@ -241,6 +243,7 @@ impl Testbed {
             links_vec,
             ui_hovered,
             pause,
+            step,
             mouse_pos,
             dt,
         }
@@ -264,7 +267,8 @@ impl Testbed {
                 self.handle_input();
             }
 
-            if !self.pause {
+            if !self.pause || self.step {
+                self.step = false;
                 self.solver.update(self.dt);
             }
         }
@@ -670,6 +674,9 @@ impl Testbed {
                         .clicked()
                     {
                         self.pause = !self.pause;
+                    }
+                    if self.pause && ui.button("Step").clicked() {
+                        self.step = true;
                     }
                     if ui.button("Reset").clicked() {
                         self.solver = Solver::new();
