@@ -1,8 +1,10 @@
 use bendy2d::circle::Circle;
-use bendy2d::link::{CircleLink, Link, ParticleLink};
+
+use bendy2d::link::{CircleLink, Link};
 use bendy2d::particle::Particle;
 use bendy2d::polygon::Polygon;
 use bendy2d::solver::Solver;
+use bendy2d::spring::Spring;
 use egui_macroquad::egui::Pos2;
 use egui_macroquad::{egui, ui};
 use macroquad::math::{f32, u32};
@@ -89,46 +91,48 @@ impl TestCase {
     }
 }
 
-fn spawn_particle_array(solver: &mut Solver, pos: Vector2<f32>, count: Vector2<u32>, dist: f32) {
+fn spawn_particle_array(
+    solver: &mut Solver,
+    pos: Vector2<f32>,
+    count: Vector2<u32>,
+    dist: f32,
+    stiffness: f32,
+) {
     for y in 0..count.y {
         for x in 0..count.x {
             let particle_pos = Vector2::new(pos.x + x as f32 * dist, pos.y + y as f32 * dist);
             solver.add_particle(particle_pos);
             let length = solver.get_particle_len();
             if x > 0 {
-                solver.add_particle_link(ParticleLink {
-                    link: Link {
-                        particle_a: length - 2,
-                        particle_b: length - 1,
-                        target_distance: dist,
-                    },
+                solver.add_particle_spring(Spring {
+                    particle_a: length - 2,
+                    particle_b: length - 1,
+                    rest_length: dist,
+                    stiffness,
                 });
             }
             if y > 0 {
-                solver.add_particle_link(ParticleLink {
-                    link: Link {
-                        particle_a: length - count.x as usize - 1,
-                        particle_b: length - 1,
-                        target_distance: dist,
-                    },
+                solver.add_particle_spring(Spring {
+                    particle_a: length - count.x as usize - 1,
+                    particle_b: length - 1,
+                    rest_length: dist,
+                    stiffness,
                 });
                 if x < count.x - 1 {
-                    solver.add_particle_link(ParticleLink {
-                        link: Link {
-                            particle_a: length - count.x as usize,
-                            particle_b: length - 1,
-                            target_distance: (dist * dist + dist * dist).sqrt(),
-                        },
+                    solver.add_particle_spring(Spring {
+                        particle_a: length - count.x as usize,
+                        particle_b: length - 1,
+                        rest_length: (dist * dist + dist * dist).sqrt(),
+                        stiffness,
                     });
                 }
             }
             if x > 0 && y > 0 {
-                solver.add_particle_link(ParticleLink {
-                    link: Link {
-                        particle_a: length - count.x as usize - 2,
-                        particle_b: length - 1,
-                        target_distance: (dist * dist + dist * dist).sqrt(),
-                    },
+                solver.add_particle_spring(Spring {
+                    particle_a: length - count.x as usize - 2,
+                    particle_b: length - 1,
+                    rest_length: (dist * dist + dist * dist).sqrt(),
+                    stiffness,
                 });
             }
         }
@@ -198,6 +202,7 @@ struct Testbed {
     test_case: TestCase,
     spawn_type: SpawnType,
     point_count: usize,
+    stiffness: f32,
     // Overlay vectors
     points_vec: Vec<Vector2<f32>>,
     circles_vec: Vec<Vector2<f32>>,
@@ -221,6 +226,7 @@ impl Testbed {
         let test_case = TestCase::Triangle1;
         let spawn_type = SpawnType::Particle;
         let point_count = 5;
+        let stiffness = 25.0;
         let points_vec = Vec::<Vector2<f32>>::new();
         let circles_vec = Vec::<Vector2<f32>>::new();
         let links_vec = Vec::<Vector2<usize>>::new();
@@ -238,6 +244,7 @@ impl Testbed {
             test_case,
             spawn_type,
             point_count,
+            stiffness,
             points_vec,
             circles_vec,
             links_vec,
@@ -250,7 +257,7 @@ impl Testbed {
     }
 
     fn update(&mut self) {
-        self.dt = 0.005; //get_frame_time();
+        self.dt = get_frame_time();
         {
             let _mouse_pos = mouse_position();
             self.mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
@@ -289,7 +296,30 @@ impl Testbed {
             SpawnType::Particle => {
                 self.overlay_particle();
                 if should_spawn {
+                    self.solver
+                        .add_particle(self.mouse_pos + Vector2::new(self.radius, self.radius));
                     self.solver.add_particle(self.mouse_pos);
+                    self.solver
+                        .add_particle(self.mouse_pos + Vector2::new(0.0, self.radius));
+                    let length = self.solver.get_particle_len();
+                    self.solver.add_particle_spring(Spring {
+                        particle_a: length - 3,
+                        particle_b: length - 2,
+                        rest_length: self.radius,
+                        stiffness: self.stiffness,
+                    });
+                    self.solver.add_particle_spring(Spring {
+                        particle_a: length - 3,
+                        particle_b: length - 1,
+                        rest_length: self.radius,
+                        stiffness: self.stiffness,
+                    });
+                    self.solver.add_particle_spring(Spring {
+                        particle_a: length - 2,
+                        particle_b: length - 1,
+                        rest_length: (self.radius * self.radius + self.radius * self.radius).sqrt(),
+                        stiffness: self.stiffness,
+                    });
                 }
             }
             SpawnType::Circle => {
@@ -309,6 +339,7 @@ impl Testbed {
                         self.mouse_pos,
                         self.point_count,
                         false,
+                        self.stiffness,
                     ));
                 }
             }
@@ -324,8 +355,9 @@ impl Testbed {
                     spawn_particle_array(
                         &mut self.solver,
                         self.mouse_pos,
-                        Vector2::new(5, 5),
+                        Vector2::new(self.point_count as u32, self.point_count as u32),
                         self.radius,
+                        self.stiffness,
                     );
                 }
             }
@@ -335,7 +367,7 @@ impl Testbed {
                     spawn_circle_array(
                         &mut self.solver,
                         self.mouse_pos,
-                        Vector2::new(5, 5),
+                        Vector2::new(self.point_count as u32, self.point_count as u32),
                         self.radius * 2.0,
                         self.radius,
                     );
@@ -362,6 +394,7 @@ impl Testbed {
                                 self.mouse_pos + offset,
                                 self.point_count,
                                 false,
+                                self.stiffness,
                             ));
                         }
                     }
@@ -382,12 +415,11 @@ impl Testbed {
                         return;
                     }
                     if let Some(particle) = self.solver.get_particle(length - 2) {
-                        self.solver.add_particle_link(ParticleLink {
-                            link: Link {
-                                particle_a: length - 2,
-                                particle_b: length - 1,
-                                target_distance: (self.mouse_pos - particle.pos).magnitude(),
-                            },
+                        self.solver.add_particle_spring(Spring {
+                            particle_a: length - 2,
+                            particle_b: length - 1,
+                            rest_length: (self.mouse_pos - particle.pos).magnitude(),
+                            stiffness: 1.0,
                         });
                     }
                 }
@@ -582,6 +614,19 @@ impl Testbed {
                 WHITE,
             );
         }
+        // Draw spring links
+        for link in self.solver.get_particle_springs().iter() {
+            let particle_a = particles[link.particle_a].pos;
+            let particle_b = particles[link.particle_b].pos;
+            draw_line(
+                particle_a.x,
+                particle_a.y,
+                particle_b.x,
+                particle_b.y,
+                1.0,
+                RED,
+            );
+        }
 
         // Draw polygons
         for polygon in self.solver.get_polygons().iter() {
@@ -597,6 +642,18 @@ impl Testbed {
                     ORANGE,
                 );
             }
+            // for spring in polygon.particle_springs.iter() {
+            //     let point_a = polygon.particles[spring.particle_a];
+            //     let point_b = polygon.particles[spring.particle_b];
+            //     draw_line(
+            //         point_a.pos.x,
+            //         point_a.pos.y,
+            //         point_b.pos.x,
+            //         point_b.pos.y,
+            //         1.0,
+            //         WHITE,
+            //     );
+            // }
         }
 
         let overlay_color = Color::new(1.0, 0.0, 0.0, 0.5);
@@ -653,6 +710,7 @@ impl Testbed {
                     ui.label(format!("Polygons: {}", self.solver.get_polygons_len()));
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
+                    ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=100.0).text("Stiffness"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
