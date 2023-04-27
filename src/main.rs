@@ -1,6 +1,6 @@
 use bendy2d::circle::Circle;
 
-use bendy2d::link::{CircleLink, Link};
+use bendy2d::link::{CircleLink, Link, ParticleLink};
 use bendy2d::particle::Particle;
 use bendy2d::polygon::Polygon;
 use bendy2d::solver::Solver;
@@ -63,9 +63,9 @@ impl SpawnType {
 }
 
 enum TestCase {
+    Playground,
     Triangle1,
     Triangle2,
-    Triangle3,
     Circle1,
     Circle2,
 }
@@ -73,20 +73,20 @@ enum TestCase {
 impl TestCase {
     fn name(&self) -> &str {
         match *self {
+            TestCase::Playground => "Playground",
             TestCase::Triangle1 => "Triangle1",
             TestCase::Triangle2 => "Triangle2",
-            TestCase::Triangle3 => "Triangle3",
             TestCase::Circle1 => "Circle1",
             TestCase::Circle2 => "Circle2",
         }
     }
     fn increase(&mut self) {
         *self = match *self {
+            TestCase::Playground => TestCase::Triangle1,
             TestCase::Triangle1 => TestCase::Triangle2,
-            TestCase::Triangle2 => TestCase::Triangle3,
-            TestCase::Triangle3 => TestCase::Circle1,
+            TestCase::Triangle2 => TestCase::Circle1,
             TestCase::Circle1 => TestCase::Circle2,
-            TestCase::Circle2 => TestCase::Triangle1,
+            TestCase::Circle2 => TestCase::Playground,
         }
     }
 }
@@ -219,11 +219,11 @@ impl Testbed {
     fn new() -> Self {
         let mut solver = Solver::new();
         solver.bounds.size = Vector2::new(screen_width(), screen_height());
-        solver.gravity = Vector2::new(0.0, 1000.0);
+        solver.gravity = Vector2::new(0.0, 100.0);
 
         let radius = 10.0;
         let spawn_mode = SpawnMode::Single;
-        let test_case = TestCase::Triangle1;
+        let test_case = TestCase::Playground;
         let spawn_type = SpawnType::Particle;
         let point_count = 5;
         let stiffness = 25.0;
@@ -415,11 +415,18 @@ impl Testbed {
                         return;
                     }
                     if let Some(particle) = self.solver.get_particle(length - 2) {
-                        self.solver.add_particle_spring(Spring {
-                            particle_a: length - 2,
-                            particle_b: length - 1,
-                            rest_length: (self.mouse_pos - particle.pos).magnitude(),
-                            stiffness: 1.0,
+                        // self.solver.add_particle_spring(Spring {
+                        //     particle_a: length - 2,
+                        //     particle_b: length - 1,
+                        //     rest_length: (self.mouse_pos - particle.pos).magnitude(),
+                        //     stiffness: 1.0,
+                        // });
+                        self.solver.add_particle_link(ParticleLink {
+                            link: Link {
+                                particle_a: length - 2,
+                                particle_b: length - 1,
+                                target_distance: (self.mouse_pos - particle.pos).magnitude(),
+                            },
                         });
                     }
                 }
@@ -719,6 +726,38 @@ impl Testbed {
                     ui.label(format!("Test case: {}", self.test_case.name()));
                     if ui.button("Change case").clicked() {
                         self.test_case.increase();
+                        self.solver = Solver::new();
+                        self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
+                        self.solver.gravity = Vector2::new(0.0, 100.0);
+                        match self.test_case {
+                            TestCase::Playground => {}
+                            TestCase::Triangle1 => {
+                                self.solver.add_polygon(Polygon::circle(
+                                    100.0,
+                                    Vector2::new(300.0, 300.0),
+                                    3,
+                                    false,
+                                    10.0,
+                                ));
+                            }
+                            TestCase::Triangle2 => {
+                                self.solver.add_polygon(Polygon::circle(
+                                    100.0,
+                                    Vector2::new(300.0, 300.0),
+                                    3,
+                                    true,
+                                    5.0,
+                                ));
+                                self.solver.add_polygon(Polygon::circle(
+                                    20.0,
+                                    Vector2::new(600.0, 300.0),
+                                    3,
+                                    true,
+                                    25.0,
+                                ));
+                            }
+                            _ => {}
+                        }
                     }
                     ui.label(format!("Spawn type: {}", self.spawn_type.name()));
                     if ui.button("Change type").clicked() {
@@ -739,7 +778,7 @@ impl Testbed {
                     if ui.button("Reset").clicked() {
                         self.solver = Solver::new();
                         self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
-                        self.solver.gravity = Vector2::new(0.0, 1000.0);
+                        self.solver.gravity = Vector2::new(0.0, 100.0);
                     }
                 })
                 .unwrap()
