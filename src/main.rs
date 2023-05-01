@@ -1,8 +1,9 @@
 use bendy2d::circle::Circle;
+use std::fmt::format;
 
 use bendy2d::link::{CircleLink, Link, ParticleLink};
 use bendy2d::particle::Particle;
-use bendy2d::polygon::Polygon;
+use bendy2d::polygon::{Collision, Polygon};
 use bendy2d::solver::Solver;
 use bendy2d::spring::Spring;
 use egui_macroquad::egui::Pos2;
@@ -10,6 +11,360 @@ use egui_macroquad::{egui, ui};
 use macroquad::math::{f32, u32};
 use macroquad::prelude::*;
 use nalgebra::Vector2;
+
+// TODO: remove this
+pub enum CollisionPhase {
+    Points,
+    RealIntersection,
+    Influence,
+    Penetration,
+    Displacement,
+    NewPoints,
+}
+
+impl CollisionPhase {
+    fn name(&self) -> &str {
+        match *self {
+            CollisionPhase::Points => "PointA",
+            CollisionPhase::RealIntersection => "RealIntersection",
+            CollisionPhase::Influence => "Influence",
+            CollisionPhase::Penetration => "PenOnNormal",
+            CollisionPhase::Displacement => "DisplacementB",
+            CollisionPhase::NewPoints => "NewPoint",
+        }
+    }
+
+    fn increase(&mut self) {
+        *self = match *self {
+            CollisionPhase::Points => CollisionPhase::RealIntersection,
+            CollisionPhase::RealIntersection => CollisionPhase::Influence,
+            CollisionPhase::Influence => CollisionPhase::Penetration,
+            CollisionPhase::Penetration => CollisionPhase::Displacement,
+            CollisionPhase::Displacement => CollisionPhase::NewPoints,
+            CollisionPhase::NewPoints => CollisionPhase::Points,
+        }
+    }
+
+    fn decrease(&mut self) {
+        *self = match *self {
+            CollisionPhase::Points => CollisionPhase::NewPoints,
+            CollisionPhase::RealIntersection => CollisionPhase::Points,
+            CollisionPhase::Influence => CollisionPhase::RealIntersection,
+            CollisionPhase::Penetration => CollisionPhase::Influence,
+            CollisionPhase::Displacement => CollisionPhase::Penetration,
+            CollisionPhase::NewPoints => CollisionPhase::Displacement,
+        }
+    }
+
+    fn draw(&self, collision: &Collision, polygons: &[Polygon]) {
+        let size_large = 50.0;
+        let size_small = 30.0;
+        let dot_size = 5.0;
+        let line_width = 3.0;
+
+        draw_line(
+            collision.point_a.pos.x,
+            collision.point_a.pos.y,
+            collision.point_b.pos.x,
+            collision.point_b.pos.y,
+            line_width,
+            YELLOW,
+        );
+        draw_circle(
+            collision.point.pos.x,
+            collision.point.pos.y,
+            dot_size,
+            YELLOW,
+        );
+
+        match *self {
+            CollisionPhase::Points => {
+                draw_text("Points", 30.0, 30.0, size_large, WHITE);
+                draw_circle(
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    dot_size,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.point_b.pos.x,
+                    collision.point_b.pos.y,
+                    dot_size,
+                    WHITE,
+                );
+                draw_text(
+                    "The point of the line".to_string().as_str(),
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    size_small,
+                    WHITE,
+                );
+
+                draw_text(
+                    "The point that intersects".to_string().as_str(),
+                    collision.point.pos.x,
+                    collision.point.pos.y,
+                    size_small,
+                    BLUE,
+                );
+                draw_circle(collision.point.pos.x, collision.point.pos.y, dot_size, BLUE);
+            }
+            CollisionPhase::RealIntersection => {
+                draw_text("Real Intersection", 30.0, 30.0, size_large, WHITE);
+                draw_text(
+                    format!(
+                        "Projecting the center onto the line: {}, {}",
+                        collision.center_proj.x, collision.center_proj.y
+                    )
+                    .as_str(),
+                    collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
+                    collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.intersection.x + collision.center_proj.x / 2.0,
+                    collision.intersection.y + collision.center_proj.y / 2.0,
+                    collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
+                    collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
+                    line_width,
+                    DARKBROWN,
+                );
+                draw_line(
+                    collision.intersection.x,
+                    collision.intersection.y,
+                    collision.intersection.x + collision.center_proj.x,
+                    collision.intersection.y + collision.center_proj.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_text(
+                    "The normal vector inwards towards the center"
+                        .to_string()
+                        .as_str(),
+                    collision.center.x,
+                    collision.center.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.intersection.x + collision.center_proj.x,
+                    collision.intersection.y + collision.center_proj.y,
+                    collision.center.x,
+                    collision.center.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_text(
+                    "Projecting the point onto the line".to_string().as_str(),
+                    collision.intersection.x + collision.point_proj.x,
+                    collision.intersection.y + collision.point_proj.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.intersection.x,
+                    collision.intersection.y,
+                    collision.intersection.x + collision.point_proj.x,
+                    collision.intersection.y + collision.point_proj.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    dot_size,
+                    WHITE,
+                );
+            }
+            CollisionPhase::Influence => {
+                draw_text(
+                    format!(
+                        "Distance to A: {} / {} = {}",
+                        collision.dist_to_b, collision.dist_a_to_b, collision.influence_a
+                    )
+                    .as_str(),
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    size_small,
+                    BLUE,
+                );
+                draw_line(
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    collision.point_a.pos.x + collision.line_normalized.x * collision.dist_to_a,
+                    collision.point_a.pos.y + collision.line_normalized.y * collision.dist_to_a,
+                    line_width,
+                    BLUE,
+                );
+                draw_text(
+                    format!(
+                        "Distance to B: {} / {} = {}",
+                        collision.dist_to_a, collision.dist_a_to_b, collision.influence_b
+                    )
+                    .as_str(),
+                    collision.point_b.pos.x,
+                    collision.point_b.pos.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.point_b.pos.x,
+                    collision.point_b.pos.y,
+                    collision.point_b.pos.x - collision.line_normalized.x * collision.dist_to_b,
+                    collision.point_b.pos.y - collision.line_normalized.y * collision.dist_to_b,
+                    line_width,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    dot_size,
+                    BLUE,
+                );
+                draw_circle(
+                    collision.point_b.pos.x,
+                    collision.point_b.pos.y,
+                    dot_size,
+                    WHITE,
+                );
+            }
+            CollisionPhase::Penetration => {
+                draw_text(
+                    format!(
+                        "Penetration Vector: {}, {}",
+                        collision.pen_vector.x, collision.pen_vector.y,
+                    )
+                    .as_str(),
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    size_small,
+                    BLUE,
+                );
+                let pen_normalized = collision.pen_vector.normalize();
+                draw_line(
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    collision.real_intersection.x + pen_normalized.x * 100.0,
+                    collision.real_intersection.y + pen_normalized.y * 100.0,
+                    line_width,
+                    BLUE,
+                );
+                draw_text(
+                    format!(
+                        "Penetration projected on normal inwards: {}, {}",
+                        collision.pen_on_normal.x, collision.pen_on_normal.y
+                    )
+                    .as_str(),
+                    collision.real_intersection.x,
+                    collision.real_intersection.y + size_small,
+                    size_small,
+                    WHITE,
+                );
+                let pen_on_normal_normalized = collision.pen_on_normal.normalize();
+                draw_line(
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    collision.real_intersection.x + pen_on_normal_normalized.x * 100.0,
+                    collision.real_intersection.y + pen_on_normal_normalized.y * 100.0,
+                    line_width,
+                    WHITE,
+                );
+            }
+            CollisionPhase::Displacement => {
+                draw_text(
+                    "impulse = pen_on_normal / (a_inv_mass^2 + b_inv_mass^2 + c_inv_mass^2)"
+                        .to_string()
+                        .as_str(),
+                    collision.real_intersection.x,
+                    collision.real_intersection.y - size_small,
+                    size_small,
+                    WHITE,
+                );
+                draw_text(
+                    "Displace Point",
+                    collision.real_intersection.x + collision.displace_point.x,
+                    collision.real_intersection.y + collision.displace_point.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    collision.real_intersection.x + collision.displace_point.x,
+                    collision.real_intersection.y + collision.displace_point.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.real_intersection.x + collision.displace_point.x,
+                    collision.real_intersection.y + collision.displace_point.y,
+                    dot_size,
+                    WHITE,
+                );
+                draw_text(
+                    "Displacement A",
+                    collision.point_a.pos.x + collision.displacement_a.x,
+                    collision.point_a.pos.y + collision.displacement_a.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.point_a.pos.x,
+                    collision.point_a.pos.y,
+                    collision.point_a.pos.x + collision.displacement_a.x,
+                    collision.point_a.pos.y + collision.displacement_a.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.point_a.pos.x + collision.displacement_a.x,
+                    collision.point_a.pos.y + collision.displacement_a.y,
+                    dot_size,
+                    BLUE,
+                );
+                draw_text(
+                    "Displacement B",
+                    collision.point_b.pos.x + collision.displacement_b.x,
+                    collision.point_b.pos.y + collision.displacement_b.y,
+                    size_small,
+                    WHITE,
+                );
+                draw_line(
+                    collision.point_b.pos.x,
+                    collision.point_b.pos.y,
+                    collision.point_b.pos.x + collision.displacement_b.x,
+                    collision.point_b.pos.y + collision.displacement_b.y,
+                    line_width,
+                    WHITE,
+                );
+                draw_circle(
+                    collision.point_b.pos.x + collision.displacement_b.x,
+                    collision.point_b.pos.y + collision.displacement_b.y,
+                    dot_size,
+                    BLUE,
+                );
+            }
+            CollisionPhase::NewPoints => {
+                draw_text("New A", 30.0, 30.0, size_large, WHITE);
+                draw_circle(collision.new_a.x, collision.new_a.y, dot_size, WHITE);
+                draw_text("New B", 30.0, 30.0, size_large, WHITE);
+                draw_circle(collision.new_b.x, collision.new_b.y, dot_size, WHITE);
+                draw_text("New Point", 30.0, 30.0, size_large, WHITE);
+                draw_circle(
+                    collision.new_point.x,
+                    collision.new_point.y,
+                    dot_size,
+                    WHITE,
+                )
+            }
+        }
+    }
+
+    fn is_last(&self) -> bool {
+        matches!(*self, CollisionPhase::NewPoints)
+    }
+}
 
 enum SpawnMode {
     Single,
@@ -196,6 +551,7 @@ fn spawn_circle_array(
 
 struct Testbed {
     solver: Solver,
+    gravity: Vector2<f32>,
 
     radius: f32,
     spawn_mode: SpawnMode,
@@ -213,13 +569,17 @@ struct Testbed {
     step: bool,
     mouse_pos: Vector2<f32>,
     dt: f32,
+    collision_phase: CollisionPhase,
+    collision_index: usize,
+    collisions: Vec<Collision>,
 }
 
 impl Testbed {
     fn new() -> Self {
         let mut solver = Solver::new();
         solver.bounds.size = Vector2::new(screen_width(), screen_height());
-        solver.gravity = Vector2::new(0.0, 100.0);
+        let gravity = Vector2::new(0.0, 1000.0);
+        solver.gravity = gravity;
 
         let radius = 10.0;
         let spawn_mode = SpawnMode::Single;
@@ -239,6 +599,7 @@ impl Testbed {
 
         Self {
             solver,
+            gravity,
             radius,
             spawn_mode,
             test_case,
@@ -253,6 +614,9 @@ impl Testbed {
             step,
             mouse_pos,
             dt,
+            collision_phase: CollisionPhase::Points,
+            collision_index: 0,
+            collisions: Vec::<Collision>::new(),
         }
     }
 
@@ -277,6 +641,30 @@ impl Testbed {
             if !self.pause || self.step {
                 self.step = false;
                 self.solver.update(self.dt);
+                self.collisions = self
+                    .solver
+                    .get_polygons()
+                    .iter()
+                    .flat_map(|p| &p.collisions)
+                    .cloned()
+                    .collect();
+                if !self.collisions.is_empty() {
+                    self.collision_phase = CollisionPhase::Points;
+                    self.collision_index = 0;
+                    self.pause = true;
+                }
+            } else {
+                let collision = self.collisions.get(self.collision_index);
+                if let Some(collision) = collision {
+                    if is_key_pressed(KeyCode::Right) {
+                        if self.collision_phase.is_last() {
+                            self.collision_index += 1;
+                        }
+                        self.collision_phase.increase();
+                    } else if is_key_pressed(KeyCode::Left) {
+                        self.collision_phase.decrease();
+                    }
+                }
             }
         }
     }
@@ -580,7 +968,7 @@ impl Testbed {
         }
     }
 
-    fn draw(&self) {
+    fn draw(&mut self) {
         // Circles
         let circles = self.solver.get_circles();
         // Draw circles
@@ -702,6 +1090,30 @@ impl Testbed {
                 );
             }
         }
+
+        if self.pause {
+            draw_text(
+                format!(
+                    "Collision: {}/{}",
+                    self.collision_index + 1,
+                    self.collisions.len()
+                )
+                .as_str(),
+                30.0,
+                80.0,
+                50.0,
+                RED,
+            );
+            let collision = self.collisions.get(self.collision_index);
+            if let Some(collision) = collision {
+                self.collision_phase
+                    .draw(collision, self.solver.get_polygons());
+            } else {
+                self.collisions.clear();
+                self.collision_index = 0;
+                self.pause = false;
+            }
+        }
     }
 
     fn draw_ui(&mut self) {
@@ -715,6 +1127,14 @@ impl Testbed {
                     ui.label(format!("Particles: {}", self.solver.get_particle_len()));
                     ui.label(format!("Circles: {}", self.solver.get_circles_len()));
                     ui.label(format!("Polygons: {}", self.solver.get_polygons_len()));
+                    ui.label(format!(
+                        "Polygon intersections: {}",
+                        self.solver
+                            .get_polygons()
+                            .iter()
+                            .map(|p| p.collisions.len())
+                            .sum::<usize>()
+                    ));
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
                     ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=100.0).text("Stiffness"));
@@ -728,7 +1148,7 @@ impl Testbed {
                         self.test_case.increase();
                         self.solver = Solver::new();
                         self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
-                        self.solver.gravity = Vector2::new(0.0, 100.0);
+                        self.solver.gravity = self.gravity;
                         match self.test_case {
                             TestCase::Playground => {}
                             TestCase::Triangle1 => {
@@ -778,7 +1198,7 @@ impl Testbed {
                     if ui.button("Reset").clicked() {
                         self.solver = Solver::new();
                         self.solver.bounds.size = Vector2::new(screen_width(), screen_height());
-                        self.solver.gravity = Vector2::new(0.0, 100.0);
+                        self.solver.gravity = self.gravity;
                     }
                 })
                 .unwrap()
@@ -797,7 +1217,7 @@ impl Testbed {
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    request_new_screen_size(1280.0, 720.0);
+    request_new_screen_size(1920.0, 1080.0);
     rand::srand(get_time() as u64);
 
     // Refresh window
