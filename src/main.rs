@@ -1,5 +1,4 @@
 use bendy2d::circle::Circle;
-use std::fmt::format;
 
 use bendy2d::link::{CircleLink, Link, ParticleLink};
 use bendy2d::particle::Particle;
@@ -75,6 +74,20 @@ impl CollisionPhase {
             collision.point.pos.y,
             dot_size,
             YELLOW,
+        );
+        draw_line(
+            collision.new_a.x,
+            collision.new_a.y,
+            collision.new_b.x,
+            collision.new_b.y,
+            line_width,
+            GREEN,
+        );
+        draw_circle(
+            collision.new_point.x,
+            collision.new_point.y,
+            dot_size,
+            GREEN,
         );
 
         match *self {
@@ -241,39 +254,27 @@ impl CollisionPhase {
                     size_small,
                     BLUE,
                 );
+                draw_line(
+                    collision.real_intersection.x,
+                    collision.real_intersection.y,
+                    collision.real_intersection.x - collision.pen_vector.x,
+                    collision.real_intersection.y - collision.pen_vector.y,
+                    line_width * 2.0,
+                    BLUE,
+                );
                 let pen_normalized = collision.pen_vector.normalize();
                 draw_line(
                     collision.real_intersection.x,
                     collision.real_intersection.y,
-                    collision.real_intersection.x + pen_normalized.x * 100.0,
-                    collision.real_intersection.y + pen_normalized.y * 100.0,
-                    line_width,
-                    BLUE,
-                );
-                draw_text(
-                    format!(
-                        "Penetration projected on normal inwards: {}, {}",
-                        collision.pen_on_normal.x, collision.pen_on_normal.y
-                    )
-                    .as_str(),
-                    collision.real_intersection.x,
-                    collision.real_intersection.y + size_small,
-                    size_small,
-                    WHITE,
-                );
-                let pen_on_normal_normalized = collision.pen_on_normal.normalize();
-                draw_line(
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    collision.real_intersection.x + pen_on_normal_normalized.x * 100.0,
-                    collision.real_intersection.y + pen_on_normal_normalized.y * 100.0,
+                    collision.real_intersection.x - pen_normalized.x * 100.0,
+                    collision.real_intersection.y - pen_normalized.y * 100.0,
                     line_width,
                     WHITE,
                 );
             }
             CollisionPhase::Displacement => {
                 draw_text(
-                    "impulse = pen_on_normal / (a_inv_mass^2 + b_inv_mass^2 + c_inv_mass^2)"
+                    "total_displacement = pen_on_normal / (a_inv_mass + b_inv_mass + c_inv_mass)"
                         .to_string()
                         .as_str(),
                     collision.real_intersection.x,
@@ -283,22 +284,22 @@ impl CollisionPhase {
                 );
                 draw_text(
                     "Displace Point",
-                    collision.real_intersection.x + collision.displace_point.x,
-                    collision.real_intersection.y + collision.displace_point.y,
+                    collision.point.pos.x + collision.displace_point.x,
+                    collision.point.pos.y + collision.displace_point.y,
                     size_small,
                     WHITE,
                 );
                 draw_line(
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    collision.real_intersection.x + collision.displace_point.x,
-                    collision.real_intersection.y + collision.displace_point.y,
+                    collision.point.pos.x,
+                    collision.point.pos.y,
+                    collision.point.pos.x + collision.displace_point.x,
+                    collision.point.pos.y + collision.displace_point.y,
                     line_width,
                     WHITE,
                 );
                 draw_circle(
-                    collision.real_intersection.x + collision.displace_point.x,
-                    collision.real_intersection.y + collision.displace_point.y,
+                    collision.point.pos.x + collision.displace_point.x,
+                    collision.point.pos.y + collision.displace_point.y,
                     dot_size,
                     WHITE,
                 );
@@ -397,6 +398,7 @@ enum SpawnType {
     Particle,
     Circle,
     Polygon,
+    Static,
 }
 
 impl SpawnType {
@@ -405,6 +407,7 @@ impl SpawnType {
             SpawnType::Particle => "Particle",
             SpawnType::Circle => "Circle",
             SpawnType::Polygon => "Polygon",
+            SpawnType::Static => "Static",
         }
     }
 
@@ -412,7 +415,8 @@ impl SpawnType {
         *self = match *self {
             SpawnType::Particle => SpawnType::Circle,
             SpawnType::Circle => SpawnType::Polygon,
-            SpawnType::Polygon => SpawnType::Particle,
+            SpawnType::Polygon => SpawnType::Static,
+            SpawnType::Static => SpawnType::Particle,
         }
     }
 }
@@ -565,6 +569,7 @@ struct Testbed {
     links_vec: Vec<Vector2<usize>>,
 
     ui_hovered: bool,
+    pause_on_collision: bool,
     pause: bool,
     step: bool,
     mouse_pos: Vector2<f32>,
@@ -578,7 +583,7 @@ impl Testbed {
     fn new() -> Self {
         let mut solver = Solver::new();
         solver.bounds.size = Vector2::new(screen_width(), screen_height());
-        let gravity = Vector2::new(0.0, 1000.0);
+        let gravity = Vector2::new(0.0, 300.0);
         solver.gravity = gravity;
 
         let radius = 10.0;
@@ -592,6 +597,7 @@ impl Testbed {
         let links_vec = Vec::<Vector2<usize>>::new();
 
         let ui_hovered = false;
+        let pause_on_collision = false;
         let pause = false;
         let step = false;
         let mouse_pos = Vector2::<f32>::new(0.0, 0.0);
@@ -610,6 +616,7 @@ impl Testbed {
             circles_vec,
             links_vec,
             ui_hovered,
+            pause_on_collision,
             pause,
             step,
             mouse_pos,
@@ -648,7 +655,7 @@ impl Testbed {
                     .flat_map(|p| &p.collisions)
                     .cloned()
                     .collect();
-                if !self.collisions.is_empty() {
+                if !self.collisions.is_empty() && self.pause_on_collision {
                     self.collision_phase = CollisionPhase::Points;
                     self.collision_index = 0;
                     self.pause = true;
@@ -731,6 +738,18 @@ impl Testbed {
                     ));
                 }
             }
+            SpawnType::Static => {
+                self.overlay_line((
+                    Vector2::new(0.0, 0.0),
+                    Vector2::new(self.radius, self.radius),
+                ));
+                if should_spawn {
+                    self.solver.add_static_line((
+                        self.mouse_pos,
+                        self.mouse_pos + Vector2::new(self.radius, self.radius),
+                    ));
+                }
+            }
         }
     }
 
@@ -788,6 +807,7 @@ impl Testbed {
                     }
                 }
             }
+            _ => {}
         }
     }
 
@@ -841,7 +861,7 @@ impl Testbed {
                     }
                 }
             }
-            SpawnType::Polygon => {}
+            _ => {}
         }
     }
 
@@ -863,7 +883,7 @@ impl Testbed {
                     });
                 }
             }
-            SpawnType::Polygon => {}
+            _ => {}
         }
     }
 
@@ -879,6 +899,15 @@ impl Testbed {
 
     fn overlay_circle(&mut self) {
         self.circles_vec.push(Vector2::new(0.0, 0.0));
+    }
+
+    fn overlay_line(&mut self, line: (Vector2<f32>, Vector2<f32>)) {
+        self.points_vec.push(line.0);
+        self.points_vec.push(line.1);
+        self.links_vec.push(Vector2::new(
+            self.points_vec.len() - 2,
+            self.points_vec.len() - 1,
+        ));
     }
 
     fn overlay_last_particle(&mut self) {
@@ -1036,6 +1065,7 @@ impl Testbed {
                     3.0,
                     ORANGE,
                 );
+                draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
             }
             // for spring in polygon.particle_springs.iter() {
             //     let point_a = polygon.particles[spring.particle_a];
@@ -1049,6 +1079,11 @@ impl Testbed {
             //         WHITE,
             //     );
             // }
+        }
+
+        // Draw static lines
+        for line in self.solver.get_static_lines().iter() {
+            draw_line(line.0.x, line.0.y, line.1.x, line.1.y, 3.0, BLUE);
         }
 
         let overlay_color = Color::new(1.0, 0.0, 0.0, 0.5);
@@ -1091,7 +1126,7 @@ impl Testbed {
             }
         }
 
-        if self.pause {
+        if self.pause && !self.collisions.is_empty() && self.pause_on_collision {
             draw_text(
                 format!(
                     "Collision: {}/{}",
@@ -1126,7 +1161,29 @@ impl Testbed {
                     ui.label(format!("Radius: {}", self.radius));
                     ui.label(format!("Particles: {}", self.solver.get_particle_len()));
                     ui.label(format!("Circles: {}", self.solver.get_circles_len()));
-                    ui.label(format!("Polygons: {}", self.solver.get_polygons_len()));
+                    ui.collapsing(
+                        format!("Polygons: {}", self.solver.get_polygons_len()),
+                        |ui| {
+                            for (i, polygon) in self.solver.get_polygons().iter().enumerate() {
+                                ui.collapsing(
+                                    format!(
+                                        "Polygo ID: {}, points: {}",
+                                        i,
+                                        polygon.particles.len()
+                                    ),
+                                    |ui| {
+                                        for point in polygon.particles.iter() {
+                                            ui.label(format!(
+                                                " Point: {}, {}",
+                                                point.pos.x, point.pos.y
+                                            ));
+                                        }
+                                    },
+                                );
+                            }
+                        },
+                    );
+
                     ui.label(format!(
                         "Polygon intersections: {}",
                         self.solver
@@ -1137,7 +1194,7 @@ impl Testbed {
                     ));
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
-                    ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=100.0).text("Stiffness"));
+                    ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=500.0).text("Stiffness"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
@@ -1178,6 +1235,13 @@ impl Testbed {
                             }
                             _ => {}
                         }
+                    }
+                    let pause_on_collision_text = match self.pause_on_collision {
+                        true => "Don't pause on collision",
+                        false => "Pause on collision",
+                    };
+                    if ui.button(pause_on_collision_text).clicked() {
+                        self.pause_on_collision = !self.pause_on_collision;
                     }
                     ui.label(format!("Spawn type: {}", self.spawn_type.name()));
                     if ui.button("Change type").clicked() {
