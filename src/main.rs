@@ -1065,7 +1065,7 @@ impl Testbed {
                     3.0,
                     ORANGE,
                 );
-                draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
+                //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
             }
             // for spring in polygon.particle_springs.iter() {
             //     let point_a = polygon.particles[spring.particle_a];
@@ -1194,7 +1194,7 @@ impl Testbed {
                     ));
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
-                    ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=500.0).text("Stiffness"));
+                    ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=1000.0).text("Stiffness"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
