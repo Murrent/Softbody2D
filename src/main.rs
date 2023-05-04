@@ -583,7 +583,7 @@ impl Testbed {
     fn new() -> Self {
         let mut solver = Solver::new();
         solver.bounds.size = Vector2::new(screen_width(), screen_height());
-        let gravity = Vector2::new(0.0, 300.0);
+        let gravity = Vector2::new(0.0, 100.0);
         solver.gravity = gravity;
 
         let radius = 10.0;
@@ -628,7 +628,7 @@ impl Testbed {
     }
 
     fn update(&mut self) {
-        self.dt = get_frame_time();
+        self.dt = 0.01;//get_frame_time();
         {
             let _mouse_pos = mouse_position();
             self.mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
@@ -781,8 +781,8 @@ impl Testbed {
                 }
             }
             SpawnType::Polygon => {
-                for x in 0..5 {
-                    for y in 0..5 {
+                for x in 0..10 {
+                    for y in 0..10 {
                         self.overlay_circle_polygon(Vector2::new(
                             x as f32 * self.radius * 2.2,
                             y as f32 * self.radius * 2.2,
@@ -790,8 +790,8 @@ impl Testbed {
                     }
                 }
                 if should_spawn {
-                    for x in 0..5 {
-                        for y in 0..5 {
+                    for x in 0..10 {
+                        for y in 0..10 {
                             let offset = Vector2::new(
                                 x as f32 * self.radius * 2.2,
                                 y as f32 * self.radius * 2.2,
