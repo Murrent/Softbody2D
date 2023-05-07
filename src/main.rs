@@ -1214,7 +1214,14 @@ impl Testbed {
                                     Vector2::new(300.0, 300.0),
                                     3,
                                     false,
-                                    10.0,
+                                    100.0,
+                                ));
+                                self.solver.add_polygon(Polygon::circle(
+                                    100.0,
+                                    Vector2::new(300.0, 600.0),
+                                    3,
+                                    false,
+                                    100.0,
                                 ));
                             }
                             TestCase::Triangle2 => {
@@ -1281,7 +1288,7 @@ impl Testbed {
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    request_new_screen_size(1920.0, 1080.0);
+    request_new_screen_size(1300.0, 600.0);
     rand::srand(get_time() as u64);
 
     // Refresh window
