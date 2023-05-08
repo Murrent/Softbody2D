@@ -10,3 +10,31 @@ macroquad = "0.3.25"
 egui-macroquad = "0.15.0"
 nalgebra = "0.32.2"
 bendy2d = { path = "src/bendy2d" }
+
+[[bin]]
+name = "bendy2d_testing"
+path = "src/main.rs"
+
+[[bin]]
+name = "performance1"
+path = "src/performance1.rs"
+
+[[bin]]
+name = "performance2"
+path = "src/performance2.rs"
+
+[[bin]]
+name = "performance3"
+path = "src/performance3.rs"
+
+[[bin]]
+name = "deterministic"
+path = "src/deterministic.rs"
+
+[[bin]]
+name = "high_speeds"
+path = "src/high_speeds.rs"
+
+[[bin]]
+name = "usage"
+path = "src/usage.rs"
