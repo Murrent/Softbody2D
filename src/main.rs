@@ -628,7 +628,7 @@ impl Testbed {
     }
 
     fn update(&mut self) {
-        self.dt = 0.01;//get_frame_time();
+        self.dt = 0.01; //get_frame_time();
         {
             let _mouse_pos = mouse_position();
             self.mouse_pos = Vector2::<f32>::new(_mouse_pos.0, _mouse_pos.1);
