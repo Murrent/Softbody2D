@@ -1057,13 +1057,19 @@ impl Testbed {
             for i in 0..polygon.particles.len() {
                 let point_a = polygon.particles[i];
                 let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
+                draw_triangle(
+                    Vec2::new(point_a.pos.x, point_a.pos.y),
+                    Vec2::new(point_b.pos.x, point_b.pos.y),
+                    Vec2::new(polygon.center.x, polygon.center.y),
+                    GRAY,
+                );
                 draw_line(
                     point_a.pos.x,
                     point_a.pos.y,
                     point_b.pos.x,
                     point_b.pos.y,
-                    3.0,
-                    ORANGE,
+                    1.0,
+                    BLACK,
                 );
                 //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
             }
@@ -1288,7 +1294,7 @@ impl Testbed {
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    request_new_screen_size(1300.0, 600.0);
+    request_new_screen_size(1920.0, 1080.0);
     rand::srand(get_time() as u64);
 
     // Refresh window
@@ -1301,7 +1307,7 @@ async fn main() {
         //     continue;
         // }
         // last_update = get_time();
-        clear_background(BLACK);
+        clear_background(WHITE);
 
         testbed.update();
 
