@@ -81,22 +81,6 @@ async fn main() {
         println!("{}", latency);
     }
 
-    // Compare the positions to the previous run
-    if Path::new("performance1.csv").exists() {
-        let mut file = File::open("performance1.csv");
-        if let Err(e) = file {
-            println!("Error creating file: {}", e);
-            return;
-        }
-        let mut file = file.unwrap();
-        let mut data = String::new();
-        for latency in latencies.iter() {
-            data += &format!("{}\n", latency);
-        }
-        file.write_all(data.as_bytes()).expect("Failed to write to file 1");
-        println!("Wrote to file");
-        return;
-    }
     // Write out the positions to a CSV file
     let mut file = File::create("performance1.csv");
     if let Err(e) = file {
@@ -109,5 +93,5 @@ async fn main() {
     for latency in latencies.iter() {
         data += &format!("{}\n", latency);
     }
-    file.write_all(data.as_bytes()).expect("Failed to write to file 2");
+    file.write_all(data.as_bytes()).expect("Failed to write to file");
 }
