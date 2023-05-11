@@ -1,4 +1,3 @@
-use std::time::Instant;
 use bendy2d::polygon::Polygon;
 use bendy2d::solver::{Bounds, Solver};
 use macroquad::prelude::*;
@@ -14,6 +13,7 @@ async fn main() {
     request_new_screen_size(screen_size.x, screen_size.y);
 
     let mut solver = Solver::new();
+    solver.gravity = Vector2::new(0.0, 980.0);
     solver.bounds = Bounds {
         pos: Vector2::new(0.0, 0.0),
         size: screen_size,
