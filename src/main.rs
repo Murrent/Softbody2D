@@ -124,71 +124,71 @@ impl CollisionPhase {
             }
             CollisionPhase::RealIntersection => {
                 draw_text("Real Intersection", 30.0, 30.0, size_large, WHITE);
-                draw_text(
-                    format!(
-                        "Projecting the center onto the line: {}, {}",
-                        collision.center_proj.x, collision.center_proj.y
-                    )
-                    .as_str(),
-                    collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
-                    collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
-                    size_small,
-                    WHITE,
-                );
-                draw_line(
-                    collision.intersection.x + collision.center_proj.x / 2.0,
-                    collision.intersection.y + collision.center_proj.y / 2.0,
-                    collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
-                    collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
-                    line_width,
-                    DARKBROWN,
-                );
-                draw_line(
-                    collision.intersection.x,
-                    collision.intersection.y,
-                    collision.intersection.x + collision.center_proj.x,
-                    collision.intersection.y + collision.center_proj.y,
-                    line_width,
-                    WHITE,
-                );
-                draw_text(
-                    "The normal vector inwards towards the center"
-                        .to_string()
-                        .as_str(),
-                    collision.center.x,
-                    collision.center.y,
-                    size_small,
-                    WHITE,
-                );
-                draw_line(
-                    collision.intersection.x + collision.center_proj.x,
-                    collision.intersection.y + collision.center_proj.y,
-                    collision.center.x,
-                    collision.center.y,
-                    line_width,
-                    WHITE,
-                );
-                draw_text(
-                    "Projecting the point onto the line".to_string().as_str(),
-                    collision.intersection.x + collision.point_proj.x,
-                    collision.intersection.y + collision.point_proj.y,
-                    size_small,
-                    WHITE,
-                );
-                draw_line(
-                    collision.intersection.x,
-                    collision.intersection.y,
-                    collision.intersection.x + collision.point_proj.x,
-                    collision.intersection.y + collision.point_proj.y,
-                    line_width,
-                    WHITE,
-                );
-                draw_circle(
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    dot_size,
-                    WHITE,
-                );
+                // draw_text(
+                //     format!(
+                //         "Projecting the center onto the line: {}, {}",
+                //         collision.center_proj.x, collision.center_proj.y
+                //     )
+                //     .as_str(),
+                //     collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
+                //     collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
+                //     size_small,
+                //     WHITE,
+                // );
+                // draw_line(
+                //     collision.intersection.x + collision.center_proj.x / 2.0,
+                //     collision.intersection.y + collision.center_proj.y / 2.0,
+                //     collision.intersection.x + collision.center_proj.x / 2.0 + 200.0,
+                //     collision.intersection.y + collision.center_proj.y / 2.0 - 200.0,
+                //     line_width,
+                //     DARKBROWN,
+                // );
+                // draw_line(
+                //     collision.intersection.x,
+                //     collision.intersection.y,
+                //     collision.intersection.x + collision.center_proj.x,
+                //     collision.intersection.y + collision.center_proj.y,
+                //     line_width,
+                //     WHITE,
+                // );
+                // draw_text(
+                //     "The normal vector inwards towards the center"
+                //         .to_string()
+                //         .as_str(),
+                //     collision.center.x,
+                //     collision.center.y,
+                //     size_small,
+                //     WHITE,
+                // );
+                // draw_line(
+                //     collision.intersection.x + collision.center_proj.x,
+                //     collision.intersection.y + collision.center_proj.y,
+                //     collision.center.x,
+                //     collision.center.y,
+                //     line_width,
+                //     WHITE,
+                // );
+                // draw_text(
+                //     "Projecting the point onto the line".to_string().as_str(),
+                //     collision.intersection.x + collision.point_proj.x,
+                //     collision.intersection.y + collision.point_proj.y,
+                //     size_small,
+                //     WHITE,
+                // );
+                // draw_line(
+                //     collision.intersection.x,
+                //     collision.intersection.y,
+                //     collision.intersection.x + collision.point_proj.x,
+                //     collision.intersection.y + collision.point_proj.y,
+                //     line_width,
+                //     WHITE,
+                // );
+                // draw_circle(
+                //     collision.real_intersection.x,
+                //     collision.real_intersection.y,
+                //     dot_size,
+                //     WHITE,
+                // );
             }
             CollisionPhase::Influence => {
                 draw_text(
@@ -202,14 +202,14 @@ impl CollisionPhase {
                     size_small,
                     BLUE,
                 );
-                draw_line(
-                    collision.point_a.pos.x,
-                    collision.point_a.pos.y,
-                    collision.point_a.pos.x + collision.line_normalized.x * collision.dist_to_a,
-                    collision.point_a.pos.y + collision.line_normalized.y * collision.dist_to_a,
-                    line_width,
-                    BLUE,
-                );
+                // draw_line(
+                //     collision.point_a.pos.x,
+                //     collision.point_a.pos.y,
+                //     collision.point_a.pos.x + collision.line_normalized.x * collision.dist_to_a,
+                //     collision.point_a.pos.y + collision.line_normalized.y * collision.dist_to_a,
+                //     line_width,
+                //     BLUE,
+                // );
                 draw_text(
                     format!(
                         "Distance to B: {} / {} = {}",
@@ -221,14 +221,14 @@ impl CollisionPhase {
                     size_small,
                     WHITE,
                 );
-                draw_line(
-                    collision.point_b.pos.x,
-                    collision.point_b.pos.y,
-                    collision.point_b.pos.x - collision.line_normalized.x * collision.dist_to_b,
-                    collision.point_b.pos.y - collision.line_normalized.y * collision.dist_to_b,
-                    line_width,
-                    WHITE,
-                );
+                // draw_line(
+                //     collision.point_b.pos.x,
+                //     collision.point_b.pos.y,
+                //     collision.point_b.pos.x - collision.line_normalized.x * collision.dist_to_b,
+                //     collision.point_b.pos.y - collision.line_normalized.y * collision.dist_to_b,
+                //     line_width,
+                //     WHITE,
+                // );
                 draw_circle(
                     collision.point_a.pos.x,
                     collision.point_a.pos.y,
@@ -1085,6 +1085,15 @@ impl Testbed {
             //         WHITE,
             //     );
             // }
+
+            // Draw bounding box
+            draw_rectangle(
+                polygon.bounds.pos.x,
+                polygon.bounds.pos.y,
+                polygon.bounds.size.x,
+                polygon.bounds.size.y,
+                Color::new(1.0, 0.0, 0.0, 0.5),
+            )
         }
 
         // Draw static lines
