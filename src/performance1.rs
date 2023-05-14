@@ -37,7 +37,7 @@ async fn main() {
         }
     }
 
-    let sim_steps = 1000;
+    let sim_steps = 2000;
     let mut latencies = Vec::<f32>::new();
     latencies.resize(sim_steps, 0.0);
     let clock = Instant::now();
