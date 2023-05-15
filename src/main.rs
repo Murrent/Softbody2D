@@ -1087,13 +1087,13 @@ impl Testbed {
             // }
 
             // Draw bounding box
-            // draw_rectangle(
-            //     polygon.bounds.pos.x,
-            //     polygon.bounds.pos.y,
-            //     polygon.bounds.size.x,
-            //     polygon.bounds.size.y,
-            //     Color::new(1.0, 0.0, 0.0, 0.5),
-            // )
+            draw_rectangle(
+                polygon.bounds.pos.x,
+                polygon.bounds.pos.y,
+                polygon.bounds.size.x,
+                polygon.bounds.size.y,
+                Color::new(1.0, 0.0, 0.0, 0.5),
+            )
         }
 
         // Draw static lines
