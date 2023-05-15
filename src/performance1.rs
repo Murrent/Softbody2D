@@ -1,8 +1,8 @@
-use std::time::Instant;
 use bendy2d::polygon::Polygon;
 use bendy2d::solver::{Bounds, Solver};
 use macroquad::prelude::*;
 use nalgebra::Vector2;
+use std::time::Instant;
 
 use std::fs::File;
 use std::io::{Read, Write};
@@ -27,7 +27,8 @@ async fn main() {
         for y in 0..15 {
             let index = Vector2::new(x as f32, y as f32);
             solver.add_polygon(Polygon::new_box(
-                (pos + Vector2::new(index.x + index.x * size.x, index.y + index.y * size.y)) / scale,
+                (pos + Vector2::new(index.x + index.x * size.x, index.y + index.y * size.y))
+                    / scale,
                 0.0,
                 size / scale,
                 4.0,
@@ -93,5 +94,6 @@ async fn main() {
     for latency in latencies.iter() {
         data += &format!("{}\n", latency);
     }
-    file.write_all(data.as_bytes()).expect("Failed to write to file");
+    file.write_all(data.as_bytes())
+        .expect("Failed to write to file");
 }

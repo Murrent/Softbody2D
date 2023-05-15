@@ -1,8 +1,8 @@
-use std::time::Instant;
 use bendy2d::polygon::Polygon;
 use bendy2d::solver::{Bounds, Solver};
 use macroquad::prelude::*;
 use nalgebra::Vector2;
+use std::time::Instant;
 
 #[macroquad::main("BasicShapes")]
 async fn main() {

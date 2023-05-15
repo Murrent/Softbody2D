@@ -73,7 +73,6 @@ async fn main() {
 
     // Compare the positions to the previous run
     if Path::new("positions.csv").exists() {
-
         let mut file = File::open("positions.csv");
         if let Err(e) = file {
             println!("Error creating file: {}", e);
@@ -89,7 +88,12 @@ async fn main() {
             let points = line.split(",");
             for (j, point) in latency.iter().enumerate() {
                 let x = points.clone().nth(j * 2).unwrap().parse::<f32>().unwrap();
-                let y = points.clone().nth(j * 2 + 1).unwrap().parse::<f32>().unwrap();
+                let y = points
+                    .clone()
+                    .nth(j * 2 + 1)
+                    .unwrap()
+                    .parse::<f32>()
+                    .unwrap();
                 if point.x != x || point.y != y {
                     println!("Mismatch at frame {}, point {}", i, j);
                     println!("Expected: {}, {}", x, y);
