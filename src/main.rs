@@ -459,6 +459,7 @@ fn spawn_particle_array(
     count: Vector2<u32>,
     dist: f32,
     stiffness: f32,
+    permanence_threshold: f32,
 ) {
     for y in 0..count.y {
         for x in 0..count.x {
@@ -471,6 +472,7 @@ fn spawn_particle_array(
                     particle_b: length - 1,
                     rest_length: dist,
                     stiffness,
+                    permanence_threshold,
                 });
             }
             if y > 0 {
@@ -479,6 +481,7 @@ fn spawn_particle_array(
                     particle_b: length - 1,
                     rest_length: dist,
                     stiffness,
+                    permanence_threshold,
                 });
                 if x < count.x - 1 {
                     solver.add_particle_spring(Spring {
@@ -486,6 +489,7 @@ fn spawn_particle_array(
                         particle_b: length - 1,
                         rest_length: (dist * dist + dist * dist).sqrt(),
                         stiffness,
+                        permanence_threshold,
                     });
                 }
             }
@@ -495,6 +499,7 @@ fn spawn_particle_array(
                     particle_b: length - 1,
                     rest_length: (dist * dist + dist * dist).sqrt(),
                     stiffness,
+                    permanence_threshold,
                 });
             }
         }
@@ -567,6 +572,7 @@ struct Testbed {
     point_count: usize,
     stiffness: f32,
     pressure: f32,
+    permanence_threshold: f32,
     // Overlay vectors
     points_vec: Vec<Vector2<f32>>,
     circles_vec: Vec<Vector2<f32>>,
@@ -617,6 +623,7 @@ impl Testbed {
             point_count,
             stiffness,
             pressure: 1.0,
+            permanence_threshold: -1.0,
             points_vec,
             circles_vec,
             links_vec,
@@ -707,18 +714,21 @@ impl Testbed {
                         particle_b: length - 2,
                         rest_length: self.radius,
                         stiffness: self.stiffness,
+                        permanence_threshold: self.permanence_threshold,
                     });
                     self.solver.add_particle_spring(Spring {
                         particle_a: length - 3,
                         particle_b: length - 1,
                         rest_length: self.radius,
                         stiffness: self.stiffness,
+                        permanence_threshold: self.permanence_threshold,
                     });
                     self.solver.add_particle_spring(Spring {
                         particle_a: length - 2,
                         particle_b: length - 1,
                         rest_length: (self.radius * self.radius + self.radius * self.radius).sqrt(),
                         stiffness: self.stiffness,
+                        permanence_threshold: self.permanence_threshold,
                     });
                 }
             }
@@ -740,6 +750,7 @@ impl Testbed {
                         self.point_count,
                         false,
                         self.stiffness,
+                        self.permanence_threshold,
                     ));
                 }
             }
@@ -784,6 +795,7 @@ impl Testbed {
                         Vector2::new(self.point_count as u32, self.point_count as u32),
                         self.radius,
                         self.stiffness,
+                        self.permanence_threshold,
                     );
                 }
             }
@@ -821,6 +833,7 @@ impl Testbed {
                                 self.point_count,
                                 false,
                                 self.stiffness,
+                                self.permanence_threshold,
                             ));
                         }
                     }
@@ -1258,6 +1271,7 @@ impl Testbed {
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
                     ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=1000.0).text("Stiffness"));
                     ui.add(egui::Slider::new(&mut self.pressure, 0.0..=100000000.0).text("Pressure"));
+                    ui.add(egui::Slider::new(&mut self.permanence_threshold, 0.0..=-1.0).text("Permanence Threshold"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
@@ -1278,6 +1292,7 @@ impl Testbed {
                                     3,
                                     false,
                                     100.0,
+                                    self.permanence_threshold,
                                 ));
                                 self.solver.add_polygon(Polygon::circle(
                                     100.0,
@@ -1285,6 +1300,7 @@ impl Testbed {
                                     3,
                                     false,
                                     100.0,
+                                    self.permanence_threshold,
                                 ));
                             }
                             TestCase::Triangle2 => {
@@ -1294,6 +1310,7 @@ impl Testbed {
                                     3,
                                     true,
                                     5.0,
+                                    self.permanence_threshold,
                                 ));
                                 self.solver.add_polygon(Polygon::circle(
                                     20.0,
@@ -1301,6 +1318,7 @@ impl Testbed {
                                     3,
                                     true,
                                     25.0,
+                                    self.permanence_threshold,
                                 ));
                             }
                             _ => {}
