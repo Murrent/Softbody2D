@@ -49,7 +49,7 @@ async fn main() {
     clear_background(RED);
     next_frame().await;
     loop {
-        clear_background(BLACK);
+        clear_background(WHITE);
 
         if is_key_pressed(KeyCode::Space) || is_key_down(KeyCode::W) {
             solver.update(1.0 / 60.0);
@@ -65,7 +65,7 @@ async fn main() {
                         polygon.particles[(j + 1) % particle_count].pos.y,
                     ) * scale,
                     Vec2::new(polygon.center.x, polygon.center.y) * scale,
-                    Color::new(1.0, 1.0, i as f32, 1.0),
+                    Color::new(i as f32, 0.0, 1.0 - i as f32, 1.0),
                 );
             }
         }
