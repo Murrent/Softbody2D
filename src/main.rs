@@ -398,6 +398,7 @@ enum SpawnType {
     Particle,
     Circle,
     Polygon,
+    PressurePolygon,
     Static,
 }
 
@@ -407,6 +408,7 @@ impl SpawnType {
             SpawnType::Particle => "Particle",
             SpawnType::Circle => "Circle",
             SpawnType::Polygon => "Polygon",
+            SpawnType::PressurePolygon => "PressurePolygon",
             SpawnType::Static => "Static",
         }
     }
@@ -415,7 +417,8 @@ impl SpawnType {
         *self = match *self {
             SpawnType::Particle => SpawnType::Circle,
             SpawnType::Circle => SpawnType::Polygon,
-            SpawnType::Polygon => SpawnType::Static,
+            SpawnType::Polygon => SpawnType::PressurePolygon,
+            SpawnType::PressurePolygon => SpawnType::Static,
             SpawnType::Static => SpawnType::Particle,
         }
     }
@@ -563,6 +566,7 @@ struct Testbed {
     spawn_type: SpawnType,
     point_count: usize,
     stiffness: f32,
+    pressure: f32,
     // Overlay vectors
     points_vec: Vec<Vector2<f32>>,
     circles_vec: Vec<Vector2<f32>>,
@@ -612,6 +616,7 @@ impl Testbed {
             spawn_type,
             point_count,
             stiffness,
+            pressure: 1.0,
             points_vec,
             circles_vec,
             links_vec,
@@ -738,6 +743,20 @@ impl Testbed {
                     ));
                 }
             }
+            SpawnType::PressurePolygon => {
+                self.overlay_circle_polygon(Vector2::zeros());
+                if should_spawn {
+                    println!("pressure polygon: {}", self.pressure);
+                    self.solver.add_polygon(Polygon::pressure_circle(
+                        self.radius,
+                        self.mouse_pos,
+                        self.point_count,
+                        false,
+                        self.stiffness,
+                        self.pressure,
+                    ));
+                }
+            }
             SpawnType::Static => {
                 self.overlay_line((
                     Vector2::new(0.0, 0.0),
@@ -802,6 +821,34 @@ impl Testbed {
                                 self.point_count,
                                 false,
                                 self.stiffness,
+                            ));
+                        }
+                    }
+                }
+            }
+            SpawnType::PressurePolygon => {
+                for x in 0..10 {
+                    for y in 0..10 {
+                        self.overlay_circle_polygon(Vector2::new(
+                            x as f32 * self.radius * 2.2,
+                            y as f32 * self.radius * 2.2,
+                        ));
+                    }
+                }
+                if should_spawn {
+                    for x in 0..10 {
+                        for y in 0..10 {
+                            let offset = Vector2::new(
+                                x as f32 * self.radius * 2.2,
+                                y as f32 * self.radius * 2.2,
+                            );
+                            self.solver.add_polygon(Polygon::pressure_circle(
+                                self.radius,
+                                self.mouse_pos + offset,
+                                self.point_count,
+                                false,
+                                self.stiffness,
+                                self.pressure,
                             ));
                         }
                     }
@@ -1015,7 +1062,7 @@ impl Testbed {
                 particle_b.x,
                 particle_b.y,
                 1.0,
-                WHITE,
+                GREEN,
             );
         }
 
@@ -1057,18 +1104,18 @@ impl Testbed {
             for i in 0..polygon.particles.len() {
                 let point_a = polygon.particles[i];
                 let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
-                draw_triangle(
-                    Vec2::new(point_a.pos.x, point_a.pos.y),
-                    Vec2::new(point_b.pos.x, point_b.pos.y),
-                    Vec2::new(polygon.center.x, polygon.center.y),
-                    GRAY,
-                );
+                // draw_triangle(
+                //     Vec2::new(point_a.pos.x, point_a.pos.y),
+                //     Vec2::new(point_b.pos.x, point_b.pos.y),
+                //     Vec2::new(polygon.center.x, polygon.center.y),
+                //     GRAY,
+                // );
                 draw_line(
                     point_a.pos.x,
                     point_a.pos.y,
                     point_b.pos.x,
                     point_b.pos.y,
-                    1.0,
+                    3.0,
                     BLACK,
                 );
                 //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
@@ -1087,13 +1134,13 @@ impl Testbed {
             // }
 
             // Draw bounding box
-            draw_rectangle(
-                polygon.bounds.pos.x,
-                polygon.bounds.pos.y,
-                polygon.bounds.size.x,
-                polygon.bounds.size.y,
-                Color::new(1.0, 0.0, 0.0, 0.5),
-            )
+            // draw_rectangle(
+            //     polygon.bounds.pos.x,
+            //     polygon.bounds.pos.y,
+            //     polygon.bounds.size.x,
+            //     polygon.bounds.size.y,
+            //     Color::new(1.0, 0.0, 0.0, 0.5),
+            // )
         }
 
         // Draw static lines
@@ -1210,6 +1257,7 @@ impl Testbed {
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
                     ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=1000.0).text("Stiffness"));
+                    ui.add(egui::Slider::new(&mut self.pressure, 0.0..=100000000.0).text("Pressure"));
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
