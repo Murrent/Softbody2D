@@ -1117,20 +1117,20 @@ impl Testbed {
             for i in 0..polygon.particles.len() {
                 let point_a = polygon.particles[i];
                 let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
-                // draw_triangle(
-                //     Vec2::new(point_a.pos.x, point_a.pos.y),
-                //     Vec2::new(point_b.pos.x, point_b.pos.y),
-                //     Vec2::new(polygon.center.x, polygon.center.y),
-                //     GRAY,
-                // );
-                draw_line(
-                    point_a.pos.x,
-                    point_a.pos.y,
-                    point_b.pos.x,
-                    point_b.pos.y,
-                    3.0,
-                    BLACK,
+                draw_triangle(
+                    Vec2::new(point_a.pos.x, point_a.pos.y),
+                    Vec2::new(point_b.pos.x, point_b.pos.y),
+                    Vec2::new(polygon.center.x, polygon.center.y),
+                    GRAY,
                 );
+                // draw_line(
+                //     point_a.pos.x,
+                //     point_a.pos.y,
+                //     point_b.pos.x,
+                //     point_b.pos.y,
+                //     3.0,
+                //     BLACK,
+                // );
                 //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
             }
             // for spring in polygon.particle_springs.iter() {
