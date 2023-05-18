@@ -25,6 +25,7 @@ async fn main() {
         4.0,
         50.0,
         false,
+        -1.0,
     ));
 
     solver.add_polygon(Polygon::new_box(
@@ -34,6 +35,7 @@ async fn main() {
         4.0,
         50.0,
         false,
+        -1.0,
     ));
 
     let polygon1 = solver.get_polygon_mut(0).unwrap();
