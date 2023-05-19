@@ -28,8 +28,10 @@ async fn main() {
             let index = Vector2::new(x as f32, y as f32);
             solver.add_polygon(Polygon::pressure_circle(
                 size / scale,
-                (pos + Vector2::new(index.x * 8.0 + index.x * size * 2.0, index.y * 8.0 + index.y * size * 2.0))
-                    / scale,
+                (pos + Vector2::new(
+                    index.x * 8.0 + index.x * size * 2.0,
+                    index.y * 8.0 + index.y * size * 2.0,
+                )) / scale,
                 20,
                 false,
                 500.0,

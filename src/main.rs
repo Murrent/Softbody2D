@@ -1270,8 +1270,13 @@ impl Testbed {
                     ui.label(format!("Point count: {}", self.point_count));
                     ui.add(egui::Slider::new(&mut self.point_count, 3..=100).text("Point count"));
                     ui.add(egui::Slider::new(&mut self.stiffness, 0.0..=1000.0).text("Stiffness"));
-                    ui.add(egui::Slider::new(&mut self.pressure, 0.0..=100000000.0).text("Pressure"));
-                    ui.add(egui::Slider::new(&mut self.permanence_threshold, 0.0..=-1.0).text("Permanence Threshold"));
+                    ui.add(
+                        egui::Slider::new(&mut self.pressure, 0.0..=100000000.0).text("Pressure"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut self.permanence_threshold, 0.0..=-1.0)
+                            .text("Permanence Threshold"),
+                    );
 
                     ui.label(format!("Spawn mode: {}", self.spawn_mode.name()));
                     if ui.button("Change mode").clicked() {
