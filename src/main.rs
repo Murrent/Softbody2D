@@ -243,45 +243,45 @@ impl CollisionPhase {
                 );
             }
             CollisionPhase::Penetration => {
-                draw_text(
-                    format!(
-                        "Penetration Vector: {}, {}",
-                        collision.pen_vector.x, collision.pen_vector.y,
-                    )
-                    .as_str(),
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    size_small,
-                    BLUE,
-                );
-                draw_line(
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    collision.real_intersection.x - collision.pen_vector.x,
-                    collision.real_intersection.y - collision.pen_vector.y,
-                    line_width * 2.0,
-                    BLUE,
-                );
-                let pen_normalized = collision.pen_vector.normalize();
-                draw_line(
-                    collision.real_intersection.x,
-                    collision.real_intersection.y,
-                    collision.real_intersection.x - pen_normalized.x * 100.0,
-                    collision.real_intersection.y - pen_normalized.y * 100.0,
-                    line_width,
-                    WHITE,
-                );
+                // draw_text(
+                //     format!(
+                //         "Penetration Vector: {}, {}",
+                //         collision.pen_vector.x, collision.pen_vector.y,
+                //     )
+                //     .as_str(),
+                //     collision.real_intersection.x,
+                //     collision.real_intersection.y,
+                //     size_small,
+                //     BLUE,
+                // );
+                // draw_line(
+                //     collision.real_intersection.x,
+                //     collision.real_intersection.y,
+                //     collision.real_intersection.x - collision.pen_vector.x,
+                //     collision.real_intersection.y - collision.pen_vector.y,
+                //     line_width * 2.0,
+                //     BLUE,
+                // );
+                // let pen_normalized = collision.pen_vector.normalize();
+                // draw_line(
+                //     collision.real_intersection.x,
+                //     collision.real_intersection.y,
+                //     collision.real_intersection.x - pen_normalized.x * 100.0,
+                //     collision.real_intersection.y - pen_normalized.y * 100.0,
+                //     line_width,
+                //     WHITE,
+                // );
             }
             CollisionPhase::Displacement => {
-                draw_text(
-                    "total_displacement = pen_on_normal / (a_inv_mass + b_inv_mass + c_inv_mass)"
-                        .to_string()
-                        .as_str(),
-                    collision.real_intersection.x,
-                    collision.real_intersection.y - size_small,
-                    size_small,
-                    WHITE,
-                );
+                // draw_text(
+                //     "total_displacement = pen_on_normal / (a_inv_mass + b_inv_mass + c_inv_mass)"
+                //         .to_string()
+                //         .as_str(),
+                //     collision.real_intersection.x,
+                //     collision.real_intersection.y - size_small,
+                //     size_small,
+                //     WHITE,
+                // );
                 draw_text(
                     "Displace Point",
                     collision.point.pos.x + collision.displace_point.x,
@@ -1113,26 +1113,28 @@ impl Testbed {
         }
 
         // Draw polygons
-        for polygon in self.solver.get_polygons().iter() {
+        for (p, polygon) in self.solver.get_polygons().iter().enumerate() {
             for i in 0..polygon.particles.len() {
                 let point_a = polygon.particles[i];
                 let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
-                draw_triangle(
-                    Vec2::new(point_a.pos.x, point_a.pos.y),
-                    Vec2::new(point_b.pos.x, point_b.pos.y),
-                    Vec2::new(polygon.center.x, polygon.center.y),
-                    GRAY,
-                );
-                // draw_line(
-                //     point_a.pos.x,
-                //     point_a.pos.y,
-                //     point_b.pos.x,
-                //     point_b.pos.y,
-                //     3.0,
-                //     BLACK,
+                // draw_triangle(
+                //     Vec2::new(point_a.pos.x, point_a.pos.y),
+                //     Vec2::new(point_b.pos.x, point_b.pos.y),
+                //     Vec2::new(polygon.center.x, polygon.center.y),
+                //     GRAY,
                 // );
-                //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, WHITE);
+                draw_line(
+                    point_a.pos.x,
+                    point_a.pos.y,
+                    point_b.pos.x,
+                    point_b.pos.y,
+                    3.0,
+                    BLACK,
+                );
+                //draw_text(&format!("{}", i), point_a.pos.x, point_a.pos.y, 20.0, BLACK);
             }
+
+            //draw_text(&format!("{}", p), polygon.center.x, polygon.center.y, 40.0, BLACK);
             // for spring in polygon.particle_springs.iter() {
             //     let point_a = polygon.particles[spring.particle_a];
             //     let point_b = polygon.particles[spring.particle_b];
