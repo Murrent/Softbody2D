@@ -1389,7 +1389,7 @@ async fn main() {
         //     continue;
         // }
         // last_update = get_time();
-        clear_background(WHITE);
+        clear_background(RED);
 
         testbed.update();
 
