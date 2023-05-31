@@ -583,6 +583,7 @@ struct Testbed {
     pause: bool,
     step: bool,
     mouse_pos: Vector2<f32>,
+    draw_aabb: bool,
     dt: f32,
     collision_phase: CollisionPhase,
     collision_index: usize,
@@ -632,6 +633,7 @@ impl Testbed {
             pause,
             step,
             mouse_pos,
+            draw_aabb: false,
             dt,
             collision_phase: CollisionPhase::Points,
             collision_index: 0,
@@ -1117,12 +1119,12 @@ impl Testbed {
             for i in 0..polygon.particles.len() {
                 let point_a = polygon.particles[i];
                 let point_b = polygon.particles[(i + 1) % polygon.particles.len()];
-                // draw_triangle(
-                //     Vec2::new(point_a.pos.x, point_a.pos.y),
-                //     Vec2::new(point_b.pos.x, point_b.pos.y),
-                //     Vec2::new(polygon.center.x, polygon.center.y),
-                //     GRAY,
-                // );
+                draw_triangle(
+                    Vec2::new(point_a.pos.x, point_a.pos.y),
+                    Vec2::new(point_b.pos.x, point_b.pos.y),
+                    Vec2::new(polygon.center.x, polygon.center.y),
+                    GRAY,
+                );
                 draw_line(
                     point_a.pos.x,
                     point_a.pos.y,
@@ -1148,14 +1150,16 @@ impl Testbed {
             //     );
             // }
 
-            // Draw bounding box
-            // draw_rectangle(
-            //     polygon.bounds.pos.x,
-            //     polygon.bounds.pos.y,
-            //     polygon.bounds.size.x,
-            //     polygon.bounds.size.y,
-            //     Color::new(1.0, 0.0, 0.0, 0.5),
-            // )
+            if self.draw_aabb {
+                //Draw bounding box
+                draw_rectangle(
+                    polygon.bounds.pos.x,
+                    polygon.bounds.pos.y,
+                    polygon.bounds.size.x,
+                    polygon.bounds.size.y,
+                    Color::new(1.0, 0.0, 0.0, 0.5),
+                )
+            }
         }
 
         // Draw static lines
@@ -1331,6 +1335,15 @@ impl Testbed {
                             _ => {}
                         }
                     }
+                    if ui
+                        .button(match self.draw_aabb {
+                            true => "Don't draw bounding boxes",
+                            false => "Draw bounding boxes",
+                        })
+                        .clicked()
+                    {
+                        self.draw_aabb = !self.draw_aabb;
+                    }
                     let pause_on_collision_text = match self.pause_on_collision {
                         true => "Don't pause on collision",
                         false => "Pause on collision",
@@ -1389,7 +1402,7 @@ async fn main() {
         //     continue;
         // }
         // last_update = get_time();
-        clear_background(RED);
+        clear_background(WHITE);
 
         testbed.update();
 
