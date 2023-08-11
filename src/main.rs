@@ -1,4 +1,5 @@
 use bendy2d::circle::Circle;
+use bendy2d::common::{is_point_in_polygon, proj_point_on_line};
 
 use bendy2d::link::{CircleLink, Link, ParticleLink};
 use bendy2d::particle::Particle;
@@ -196,7 +197,7 @@ impl CollisionPhase {
                         "Distance to A: {} / {} = {}",
                         collision.dist_to_b, collision.dist_a_to_b, collision.influence_a
                     )
-                    .as_str(),
+                        .as_str(),
                     collision.point_a.pos.x,
                     collision.point_a.pos.y,
                     size_small,
@@ -215,7 +216,7 @@ impl CollisionPhase {
                         "Distance to B: {} / {} = {}",
                         collision.dist_to_a, collision.dist_a_to_b, collision.influence_b
                     )
-                    .as_str(),
+                        .as_str(),
                     collision.point_b.pos.x,
                     collision.point_b.pos.y,
                     size_small,
@@ -1214,7 +1215,7 @@ impl Testbed {
                     self.collision_index + 1,
                     self.collisions.len()
                 )
-                .as_str(),
+                    .as_str(),
                 30.0,
                 80.0,
                 50.0,
@@ -1405,6 +1406,45 @@ async fn main() {
         clear_background(WHITE);
 
         testbed.update();
+
+        //------------------------
+        let polygon = vec![Vector2::new(100.0, 100.0),
+                           Vector2::new(200.0, 400.0),
+                           Vector2::new(300.0, 200.0),
+                           Vector2::new(200.0, 300.0),
+                           Vector2::new(100.0, 200.0)];
+        let mouse_pos = mouse_position();
+        let mouse_vec: Vector2<f32> = Vector2::new(mouse_pos.0, mouse_pos.1);
+        if let Some(point) = is_point_in_polygon(&mouse_vec, &polygon) {
+            let (mut j, mut i) = (polygon.len() - 1, 0);
+            while i < polygon.len() {
+                let particle_a = &polygon[i];
+                let particle_b = &polygon[j];
+
+                draw_line(particle_a.x, particle_a.y, particle_b.x, particle_b.y, 2.0, GREEN);
+
+                j = i;
+                i += 1;
+            }
+            draw_circle(point.x, point.y, 5.0, BLACK);
+        } else {
+            let (mut j, mut i) = (polygon.len() - 1, 0);
+            while i < polygon.len() {
+                let particle_a = &polygon[i];
+                let particle_b = &polygon[j];
+
+                draw_line(particle_a.x, particle_a.y, particle_b.x, particle_b.y, 2.0, BLACK);
+
+                j = i;
+                i += 1;
+            }
+        }
+
+        let point = proj_point_on_line(mouse_vec, (Vector2::new(300.0, 500.0), Vector2::new(400.0, 600.0)));
+        draw_line(300.0, 500.0, 400.0, 600.0, 2.0, GREEN);
+        draw_circle(point.x, point.y, 5.0, BLACK);
+
+        //------------------------
 
         testbed.draw();
         testbed.draw_ui();
